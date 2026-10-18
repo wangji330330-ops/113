@@ -72,6 +72,8 @@ npm start
 2. 如果系统提示「不允许安装未知来源应用」，在浏览器/文件管理器的设置里允许本次安装。
 3. 这是**调试签名**版本，适合自用测试，不建议上架应用商店。
 
+> 覆盖安装需要新旧 APK 使用同一个签名。当前文件由本机的调试密钥签名；后续继续在本机构建的版本可以直接覆盖。如果换机器或改用 GitHub Actions 构建，请先导出备份、卸载旧版再安装，或者配置统一的 release 签名。
+
 ## 打包 Android APK
 
 ### 自动构建（可选）
@@ -137,6 +139,13 @@ download/                   APK 与校验文件
 - 「最长连续」按历史最长计算，断掉也不会抹掉已经解锁的奖励。
 - 人物搭配保存在 `profile.look`，属于同一条本地数据，会一起导出/导入。
 - 换设备前建议在「小屋 → 导出备份」保存 JSON。
+
+## 发布新版本（备忘）
+
+1. 更新 `assets/js/data.js` 里的 `APP_VERSION`、`APP_BUILD` 和 `CHANGELOG`。
+2. 同步更新 `package.json`、`android/app/build.gradle.kts` 的 `versionCode` / `versionName`、`sw.js` 的 `CACHE`、`version.json`。
+3. 重新构建 APK，替换 `download/` 里的文件和 SHA256；把 `version.json` 的 `apkUrl` / `releaseUrl` 指向新的 Release。
+4. 创建新的 tag / Release 并上传 APK，推送后等 GitHub Pages 构建完成。
 
 ## 一句题外话
 

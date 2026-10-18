@@ -22,7 +22,6 @@ import { Scene, paintPortrait } from "./scene.js";
 import { PlaceScene, paintPlacePreview } from "./places.js";
 import { PLACES, getPlace } from "./place-data.js";
 import {
-  DEFAULT_LOOK,
   LOOK_PARTS,
   normalizeLook,
   paintPersonPreview,
@@ -49,9 +48,7 @@ import {
 import {
   clamp,
   conditionUnit,
-  dateKicker,
-  esc,
-  monthTitle
+  esc
 } from "./helpers.js";
 
 const ROUTES = new Set(["today", "places", "habits", "rewards", "me"]);
