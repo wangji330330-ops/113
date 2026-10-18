@@ -5,7 +5,8 @@
 微光小屋是一个偏「照顾自己」而不是「管理自己」的打卡应用。没有排行榜，没有连续中断惩罚，也不要求每天都很有动力。完成一件小事、来喘口气、写一句今天的心情，都算数。
 
 - 网页版：<https://wangji330330-ops.github.io/113/>
-- Android：可下载仓库中的调试 APK，也可以按下方说明本地打包。仓库另附了一份可选的 GitHub Actions 构建模板。
+- Android：[下载调试 APK](download/glimmer-nook-v0.1.0-debug.apk)，也可以按下方说明本地打包。
+- 仓库另附了一份可选的 GitHub Actions 构建模板。
 
 ## 现在有什么
 
@@ -39,6 +40,18 @@ npm start
 - 也可以直接上传到任意静态托管（Vercel、Netlify、Cloudflare Pages 等）。
 - 所有路径都是相对的，因此放在 `/113/` 这样的子路径下也能正常工作。
 
+## 下载 Android APK
+
+- 文件：[glimmer-nook-v0.1.0-debug.apk](download/glimmer-nook-v0.1.0-debug.apk)（约 2.1 MB）
+- 校验：`download/glimmer-nook-v0.1.0-debug.apk.sha256`
+- 支持 Android 7.0（API 24）及以上。
+
+安装步骤：
+
+1. 在手机浏览器打开上面的 APK 链接下载。
+2. 如果系统提示「不允许安装未知来源应用」，在浏览器/文件管理器的设置里允许本次安装。
+3. 这是**调试签名**版本，适合自用测试，不建议上架应用商店。
+
 ## 打包 Android APK
 
 ### 自动构建（可选）
@@ -50,7 +63,7 @@ npm start
 需要 JDK 17、Android SDK 35。用 Android Studio 打开 `android/` 目录，先同步网页资源：
 
 ```powershell
-pwsh scripts/sync-android.ps1
+powershell -ExecutionPolicy Bypass -File scripts/sync-android.ps1
 ```
 
 然后 Run / Build APK。也可以命令行：
@@ -61,6 +74,8 @@ gradle assembleDebug
 ```
 
 APK 输出在 `android/app/build/outputs/apk/debug/app-debug.apk`。
+
+如果 Windows 项目路径包含中文，请把 `android/` 复制到纯英文路径再构建（AGP 会检查路径）。
 
 > 这是调试签名的 APK，适合自己安装使用，不适合直接上架应用商店。
 
