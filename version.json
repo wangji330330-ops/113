@@ -1,15 +1,15 @@
 {
-  "version": "0.2.0",
-  "build": 2,
+  "version": "0.3.0",
+  "build": 3,
   "releasedAt": "2026-10-18",
-  "title": "小灯会换衣服，也会出门了",
+  "title": "场景住进首页，日记本和联网小灯",
   "notes": [
-    "人物形象可以自由搭配：头、面、身、腿、鞋。",
-    "新增 13 个可停留场景，点击场景里的物件会触发对话。",
-    "设置里加入版本检查与更新日志。",
-    "人物动作和表情重新绘制。"
+    "今日页每次打开随机换一个场景，13 个场景都可以直接点击。",
+    "新增按日期归档的日记本，不再限制字数，空一行自动分段。",
+    "可选接入 DeepSeek V4.1 Flash：在日记本里和小灯聊天，需要自己的 API Key。",
+    "页面切换改为即时渲染，场景缩略图分批绘制，切换更轻。"
   ],
   "webUrl": "https://wangji330330-ops.github.io/113/",
-  "apkUrl": "https://github.com/wangji330330-ops/113/releases/download/v0.2.0/glimmer-nook-v0.2.0-debug.apk",
-  "releaseUrl": "https://github.com/wangji330330-ops/113/releases/tag/v0.2.0"
+  "apkUrl": "https://github.com/wangji330330-ops/113/releases/download/v0.3.0/glimmer-nook-v0.3.0-debug.apk",
+  "releaseUrl": "https://github.com/wangji330330-ops/113/releases/tag/v0.3.0"
 }

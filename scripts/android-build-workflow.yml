@@ -1,4 +1,4 @@
-﻿# Optional GitHub Actions workflow.
+# Optional GitHub Actions workflow.
 # Copy this file to .github/workflows/android.yml after committing it
 # with a token that has the workflow scope.
 name: Build Android APK
@@ -41,7 +41,7 @@ jobs:
         run: |
           mkdir -p android/app/src/main/assets/www
           rm -rf android/app/src/main/assets/www/*
-          cp -R index.html manifest.webmanifest sw.js assets android/app/src/main/assets/www/
+          cp -R index.html manifest.webmanifest sw.js version.json assets android/app/src/main/assets/www/
           test -f android/app/src/main/assets/www/index.html
           test -f android/app/src/main/assets/www/assets/js/app.js
 

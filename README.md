@@ -2,39 +2,58 @@
 
 > 一个不催你的像素风打卡小屋。做到一点点，就点亮一点点。
 
-微光小屋是一个偏「照顾自己」而不是「管理自己」的打卡应用。没有排行榜，没有连续中断惩罚，也不要求每天都很有动力。完成一件小事、来喘口气、去某个场景坐一会儿，都算数。
+微光小屋是一个偏「照顾自己」而不是「管理自己」的打卡应用。没有排行榜，没有连续中断惩罚，也不要求每天都很有动力。完成一件小事、来喘口气、写一页日记，或者和小灯说两句话，都算数。
 
 ![微光小屋桌面版预览](docs/preview-desktop.png)
 
-![图书馆场景预览](docs/preview-places.png)
+<p align="center">
+  <img src="docs/preview-diary.png" alt="日记本预览" width="49%">
+  <img src="docs/preview-chat.png" alt="和小灯聊天预览" width="49%">
+</p>
 
 <p align="center">
-  <img src="docs/preview-mobile.png" alt="微光小屋手机版场景列表" width="280">
+  <img src="docs/preview-mobile.png" alt="微光小屋手机版预览" width="280">
 </p>
 
 - 网页版：<https://wangji330330-ops.github.io/113/>
-- Android：[下载调试 APK v0.2.0](https://github.com/wangji330330-ops/113/releases/download/v0.2.0/glimmer-nook-v0.2.0-debug.apk)
-- [GitHub Release v0.2.0](https://github.com/wangji330330-ops/113/releases/tag/v0.2.0)
+- Android：[下载调试 APK v0.3.0](https://github.com/wangji330330-ops/113/releases/download/v0.3.0/glimmer-nook-v0.3.0-debug.apk)
+- [GitHub Release v0.3.0](https://github.com/wangji330330-ops/113/releases/tag/v0.3.0)
 - [更新日志](CHANGELOG.md)
 
 ## 现在有什么
 
-- **今日打卡**：三件预置小事，可自由增删改；点一下完成任务，点错再点一下即可取消。
-- **人物换装**：头、面、身、腿、鞋分开搭配，共有 8 / 8 / 8 / 8 / 6 种选择；在「小屋 → 人物形象」或点 Today 场景里的「换个样子」进入衣柜。
+- **今日页会随机换场景**：每次打开或刷新，13 个场景随机落在首页。可以直接在首页点场景里的小物件，也可以点小灯说话；不用先去另一个页面。
 - **13 个可停留场景**：
   - 家里：客厅、房间、厨房、卫生间
   - 外面：学校、图书馆、电影院、郊游、超市、球场、江边、爬山、兜风
-- **可交互场景**：每个场景都有 4 个可点击的小物件，会触发小灯的不同对话、粒子和动作；点小灯本人也会说话。场景本身也有台灯闪烁、水波、车窗外流动的夜景等待机动画。
+- **日记本**：按日期归档每天的文字。「给今天留一句话」不再限制字数，空一行自动分段；旧日记可以单独打开编辑。日记只保存在本机。
+- **和小灯聊聊**：可选接入 DeepSeek V4.1 Flash。需要你自己的 DeepSeek API Key，直接在设备上请求官方接口，不经过第三方代理。没有 Key 时，其他功能完全不受影响。
+- **人物换装**：头、面、身、腿、鞋分开搭配，多种选择；在「小屋 → 人物形象」或今日页的「换个样子」进入。
+- **今日打卡**：三件预置小事，可自由增删改；点一下完成任务，点错再点一下即可取消。
 - **能量签到**：快没电 / 还行 / 有点光。只影响小灯的表情和对话，不影响奖励。
 - **喘口气**：半分钟呼吸引导。完成即算「今天来过」，会推进「出现天数」类奖励。
-- **自定义小事**：名称、像素图标、难度（+1 / +2 / +3 微光）。
-- **自定义奖励**：奖励内容自己写，达成条件支持累计出现天数、完成任务次数、积攒微光、最长连续天数。
-- **成长与回顾**：微光等级、出现天数、完成次数、连续记录、月历足迹。
-- **版本与更新**：设置内可检查更新、查看更新日志；网页版会通过 Service Worker 更新，Android 会跳转到新版 APK。
-- **像素演出**：小灯呼吸/眨眼/被摸头/打卡跳跃，小猫呼吸，台灯闪烁，点灯与彩纸；页面切换有像素擦除动画。
-- **音效**：WebAudio 实时合成的 8-bit 小声音，可关闭。
-- **本地优先**：全部数据保存在浏览器 `localStorage`，不登录、不上传。支持导出 / 导入 JSON 备份。
-- **PWA / 离线**：可添加到主屏幕，Service Worker 缓存应用与像素字体。
+- **自定义小事和奖励**：名称、图标、难度、达成条件都由自己定。
+- **成长与回顾**：微光等级、出现天数、完成次数、最长连续、月历足迹。
+- **版本与更新**：设置内检查更新、查看更新日志；网页版在线更新，Android 跳转到新版 APK。
+- **像素演出与音效**：小灯呼吸、眨眼、被摸头、打卡跳跃，场景待机动画，WebAudio 8-bit 音效。
+- **本地优先**：打卡、日记、人物搭配和设置保存在浏览器 `localStorage`，不登录、不上传；支持导出 / 导入备份。
+- **PWA / 离线**：可添加到主屏幕，Service Worker 缓存应用与像素字体；除了联网聊天，其余功能可离线使用。
+
+底部导航现在有五个位置：**今日 / 小事 / 日记 / 奖励 / 小屋**。原来的场景页还在，从今日页的「去走走」或小屋设置进入。
+
+## 联网聊天怎么用
+
+1. 在 [DeepSeek 开放平台](https://platform.deepseek.com/api_keys) 创建一个 API Key。
+2. 打开「日记 → 和小灯聊聊 → 连接 DeepSeek」，粘贴 Key，保存。
+3. 回到聊天，直接说话。默认模型是 `deepseek-flash`（DeepSeek V4.1 Flash 的 API 模型名）。
+
+说明：
+
+- 请求从你的设备直接发往 `https://api.deepseek.com`，不经过微光小屋自己的服务器。DeepSeek API 支持浏览器跨域请求。
+- Key 以明文保存在当前设备的 `localStorage` 中，**不会进入导出备份**；聊天记录也只保存在本机。请不要在公用设备上保存 Key。
+- 聊天内容会发送给 DeepSeek，并按 DeepSeek 的 API 计费；需要账户里有余额。
+- 不要把密码、身份证号、住址等敏感信息发进聊天。
+- 没有联网或没有 Key 时，小灯不会假装回答；日记本、场景、打卡、奖励都可以照常离线使用。
 
 ## 更新机制
 
@@ -61,10 +80,10 @@ npm start
 
 ## 下载 Android APK
 
-- Release 下载：[glimmer-nook-v0.2.0-debug.apk](https://github.com/wangji330330-ops/113/releases/download/v0.2.0/glimmer-nook-v0.2.0-debug.apk)（约 2.2 MB）
-- 仓库镜像：[download/glimmer-nook-v0.2.0-debug.apk](download/glimmer-nook-v0.2.0-debug.apk)
-- 校验：[SHA256](download/glimmer-nook-v0.2.0-debug.apk.sha256)
-- 支持 Android 7.0（API 24）及以上，版本 0.2.0（versionCode 2）。
+- Release 下载：[glimmer-nook-v0.3.0-debug.apk](https://github.com/wangji330330-ops/113/releases/download/v0.3.0/glimmer-nook-v0.3.0-debug.apk)（约 2.2 MB）
+- 仓库镜像：[download/glimmer-nook-v0.3.0-debug.apk](download/glimmer-nook-v0.3.0-debug.apk)
+- 校验：[SHA256](download/glimmer-nook-v0.3.0-debug.apk.sha256)
+- 支持 Android 7.0（API 24）及以上，版本 0.3.0（versionCode 3）。
 
 安装步骤：
 
@@ -112,12 +131,13 @@ CHANGELOG.md                人类可读的更新日志
 assets/
   css/style.css             全部界面与动画样式
   js/app.js                 应用启动、路由、弹窗、交互
-  js/views.js               五个页面的 HTML 模板
-  js/store.js               本地数据、统计、奖励解锁
+  js/views.js               五个导航页面的 HTML 模板
+  js/store.js               本地数据、统计、奖励、日记
   js/character.js           人物部件、搭配与绘制
-  js/scene.js               Today 的像素客厅与小灯/小猫动画
+  js/scene.js               人物头像绘制与旧客厅场景（保留）
   js/place-data.js          13 个场景的文案与可点击物件
   js/places.js              场景绘制、粒子与场景控制器
+  js/chat.js                DeepSeek 直连、历史与系统提示
   js/updater.js             版本检查、Service Worker 更新、外部跳转
   js/icons.js               12×12 像素图标集
   js/audio.js               WebAudio 音效合成
@@ -133,12 +153,14 @@ download/                   APK 与校验文件
 
 ## 数据说明
 
-- 存储键：`glimmer-nook:v1`
+- 存储键：`glimmer-nook:v1`（打卡、日记、人物搭配）
+- 聊天设置：`glimmer-nook:deepseek`（只在本机；含 API Key）
+- 聊天记录：`glimmer-nook:chat`（只在本机；最多保留最近 80 条）
 - 每个自然日每个习惯只记一次；取消打卡会同步修正统计。
-- 「出现天数」= 完成过至少一件小事，或完成过一次呼吸练习的日期数。
+- 「出现天数」= 完成过至少一件小事，或完成过一次呼吸练习的日期数；只写日记不算打卡，但会出现在日记本里。
 - 「最长连续」按历史最长计算，断掉也不会抹掉已经解锁的奖励。
-- 人物搭配保存在 `profile.look`，属于同一条本地数据，会一起导出/导入。
-- 换设备前建议在「小屋 → 导出备份」保存 JSON。
+- 日记不限字数（底层为安全起见限制单篇 20 万字符），旧日记可以单独编辑。
+- 换设备前建议在「小屋 → 导出备份」保存 JSON。备份包含打卡、日记和人物搭配，不包含 API Key 和聊天记录。
 
 ## 发布新版本（备忘）
 

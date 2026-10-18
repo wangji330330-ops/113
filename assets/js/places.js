@@ -1156,6 +1156,7 @@ export class PlaceScene {
     this.look = normalizeLook(options.look || DEFAULT_LOOK);
     this.reducedMotion = options.motion === false;
     this.preview = Boolean(options.preview);
+    this.mood = options.mood || null;
     this.startedAt = performance.now();
     this.action = "idle";
     this.actionUntil = 0;
@@ -1180,6 +1181,18 @@ export class PlaceScene {
     this.actionUntil = now + 1200;
     this.fx.push(...effectParticles("hearts", this.place.char.x, this.place.char.groundY - 54, "#e8735a", now));
     if (this.reducedMotion) this.render(now);
+  }
+
+  celebrate() {
+    const now = performance.now();
+    this.poke();
+    this.fx.push(...effectParticles("stars", this.place.char.x, this.place.char.groundY - 60, "#f5c451", now));
+    if (this.reducedMotion) this.render(now);
+  }
+
+  setMood(mood) {
+    this.mood = mood || null;
+    if (this.reducedMotion) this.render(performance.now());
   }
 
   wave() {
@@ -1215,7 +1228,7 @@ export class PlaceScene {
       now: this.preview ? 0 : now,
       jump,
       action: happy ? "happy" : action === "wave" ? "wave" : "idle",
-      mood: null,
+      mood: this.mood,
       reduced: this.reducedMotion || this.preview,
       holdMug: Boolean(this.place.char.holdMug),
       tilt: planPokeTilt(now, this.actionUntil, action)

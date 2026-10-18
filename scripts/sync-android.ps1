@@ -12,6 +12,7 @@ if (Test-Path $dest) {
 Copy-Item (Join-Path $root "index.html") $dest
 Copy-Item (Join-Path $root "manifest.webmanifest") $dest
 Copy-Item (Join-Path $root "sw.js") $dest
+Copy-Item (Join-Path $root "version.json") $dest
 Copy-Item (Join-Path $root "assets") $dest -Recurse
 
 Write-Host "Synced web assets to android/app/src/main/assets/www" -ForegroundColor Green

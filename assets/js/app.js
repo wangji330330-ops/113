@@ -18,9 +18,21 @@ import {
 import * as store from "./store.js";
 import { icon } from "./icons.js";
 import { audio } from "./audio.js";
-import { Scene, paintPortrait } from "./scene.js";
+import { paintPortrait } from "./scene.js";
 import { PlaceScene, paintPlacePreview } from "./places.js";
 import { PLACES, getPlace } from "./place-data.js";
+import {
+  ChatError,
+  appendChatMessage,
+  clearChatKey,
+  clearChatMessages,
+  getChatMessages,
+  getChatSettings,
+  hasChatKey,
+  maskKey,
+  saveChatSettings,
+  sendChatMessage
+} from "./chat.js";
 import {
   LOOK_PARTS,
   normalizeLook,
@@ -38,6 +50,7 @@ import {
 } from "./updater.js";
 import {
   renderAppBar,
+  renderDiary,
   renderHabits,
   renderMe,
   renderNav,
@@ -51,17 +64,22 @@ import {
   esc
 } from "./helpers.js";
 
-const ROUTES = new Set(["today", "places", "habits", "rewards", "me"]);
+const ROUTES = new Set(["today", "places", "habits", "diary", "rewards", "me"]);
 const REDUCED_MOTION = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 const now = new Date();
 
 const ui = {
   route: "today",
+  homePlace: null,
   scene: null,
   placeScene: null,
   activePlace: null,
   placeSpeech: "",
   placeSpeechUntil: 0,
+  diaryTab: "journal",
+  chatSending: false,
+  chatError: "",
+  previewToken: 0,
   speech: "",
   speechUntil: 0,
   lastLine: "",
@@ -82,7 +100,6 @@ const ui = {
   versionInfo: null,
   updateAvailable: false,
   updateChecking: false,
-  transitionToken: 0,
   booted: false,
   currentDay: store.dateKey()
 };
@@ -93,6 +110,16 @@ const $$ = (selector, root = document) => Array.from(root.querySelectorAll(selec
 function parseRoute() {
   const raw = String(location.hash || "").replace(/^#\/?/, "").split(/[/?]/)[0];
   return ROUTES.has(raw) ? raw : "today";
+}
+
+function pickHomePlace(exclude = "") {
+  const pool = PLACES.filter((place) => place.id !== exclude);
+  return pool[Math.floor(Math.random() * pool.length)]?.id || PLACES[0].id;
+}
+
+function getHomePlace() {
+  if (!ui.homePlace) ui.homePlace = pickHomePlace();
+  return getPlace(ui.homePlace);
 }
 
 function pickLine(list) {
@@ -137,13 +164,14 @@ function setDocumentTitle() {
     today: "微光小屋 · 一点点也算数",
     places: "去走走 · 微光小屋",
     habits: "我的小事 · 微光小屋",
+    diary: "日记本 · 微光小屋",
     rewards: "给自己的奖励 · 微光小屋",
     me: "我的小屋 · 微光小屋"
   };
   document.title = titles[ui.route] || titles.today;
 }
 
-function renderShell({ focusPage = false } = {}) {
+function renderShell({ focusPage = false, animatePage = true } = {}) {
   const state = store.getState();
   const stats = store.getStats();
   document.documentElement.classList.toggle("no-motion", !state.settings.motion);
@@ -153,10 +181,10 @@ function renderShell({ focusPage = false } = {}) {
     claimableCount: stats.claimableCount,
     updateAvailable: ui.updateAvailable
   });
-  renderPage({ focusPage });
+  renderPage({ focusPage, animatePage });
 }
 
-function renderPage({ focusPage = false } = {}) {
+function renderPage({ focusPage = false, animatePage = true } = {}) {
   cleanupPage();
   const state = store.getState();
   const stats = store.getStats();
@@ -164,7 +192,7 @@ function renderPage({ focusPage = false } = {}) {
   let html = "";
   if (ui.route === "today") {
     const overview = store.getTodayOverview();
-    html = renderToday({ state, stats, overview, speech: currentSpeech() });
+    html = renderToday({ state, stats, overview, speech: currentSpeech(), homePlace: getHomePlace() });
   } else if (ui.route === "places") {
     html = renderPlaces({
       state,
@@ -173,6 +201,20 @@ function renderPage({ focusPage = false } = {}) {
     });
   } else if (ui.route === "habits") {
     html = renderHabits({ state, stats });
+  } else if (ui.route === "diary") {
+    const entries = store.getDiaryEntries();
+    html = renderDiary({
+      state,
+      entries,
+      todayNote: store.getNoteForDate(),
+      todayKey: store.dateKey(),
+      tab: ui.diaryTab,
+      chatMessages: getChatMessages(),
+      chatSettings: getChatSettings(),
+      chatConfigured: hasChatKey(),
+      chatSending: ui.chatSending,
+      chatError: ui.chatError
+    });
   } else if (ui.route === "rewards") {
     html = renderRewards({ state, stats });
   } else {
@@ -188,8 +230,10 @@ function renderPage({ focusPage = false } = {}) {
   page.className = `page page--${ui.route}`;
   page.innerHTML = html;
   page.classList.remove("page-enter");
-  void page.offsetWidth;
-  page.classList.add("page-enter");
+  if (animatePage) {
+    void page.offsetWidth;
+    page.classList.add("page-enter");
+  }
   document.body.dataset.route = ui.route;
   setDocumentTitle();
   bindPage();
@@ -220,9 +264,8 @@ function bindPage() {
     const canvas = $("#scene-canvas");
     const overview = store.getTodayOverview();
     if (canvas) {
-      ui.scene = new Scene(canvas, {
-        done: overview.doneCount,
-        total: overview.total,
+      ui.scene = new PlaceScene(canvas, {
+        place: getHomePlace(),
         mood: overview.log?.energy || null,
         look,
         motion: store.getState().settings.motion && !REDUCED_MOTION
@@ -242,8 +285,25 @@ function bindPage() {
         motion: store.getState().settings.motion && !REDUCED_MOTION
       });
     } else {
-      $$("[data-place-preview]").forEach((canvas) => {
-        paintPlacePreview(canvas, canvas.dataset.placePreview, look);
+      const token = (ui.previewToken += 1);
+      const canvases = $$("[data-place-preview]");
+      let index = 0;
+      const paintNext = () => {
+        if (token !== ui.previewToken || ui.route !== "places" || ui.activePlace) return;
+        const end = Math.min(index + 3, canvases.length);
+        for (; index < end; index += 1) {
+          const canvas = canvases[index];
+          if (canvas && canvas.isConnected) paintPlacePreview(canvas, canvas.dataset.placePreview, look);
+        }
+        if (index < canvases.length) window.requestAnimationFrame(paintNext);
+      };
+      window.requestAnimationFrame(paintNext);
+    }
+  } else if (ui.route === "diary") {
+    if (ui.diaryTab === "chat") {
+      window.requestAnimationFrame(() => {
+        const scroller = $("#chat-scroll");
+        if (scroller) scroller.scrollTop = scroller.scrollHeight;
       });
     }
   } else if (ui.route === "me") {
@@ -254,6 +314,7 @@ function bindPage() {
 
 function cleanupPage() {
   flushNote();
+  ui.previewToken += 1;
   if (ui.scene) {
     ui.scene.destroy();
     ui.scene = null;
@@ -305,12 +366,8 @@ function refreshAll({ celebrate = false, keepScroll = true, focus = null } = {})
   ui.pendingCelebrate = Boolean(celebrate);
   ui.focusAfterRender = focus;
   const y = window.scrollY;
-  renderShell();
-  if (keepScroll) {
-    window.scrollTo(0, y);
-  } else {
-    window.scrollTo(0, 0);
-  }
+  renderShell({ animatePage: false });
+  window.scrollTo({ top: keepScroll ? y : 0, left: 0, behavior: "auto" });
 }
 
 function flushNote() {
@@ -321,14 +378,13 @@ function flushNote() {
   if (ui.noteDraft !== null) {
     store.setNote(ui.noteDraft);
     ui.noteDraft = null;
+    markNoteSaved("已保存");
   }
 }
 
 function transitionTo(route) {
-  if (route === ui.route) return;
-  if (!ui.booted) {
-    ui.route = route;
-    renderShell({ focusPage: true });
+  if (route === ui.route) {
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
     return;
   }
   if (!$("#modal-root").hidden && ui.modalDismissible) closeModal({ instant: true });
@@ -336,23 +392,9 @@ function transitionTo(route) {
   ui.activePlace = null;
   ui.placeSpeech = "";
   ui.placeSpeechUntil = 0;
-  const wipe = $("#page-wipe");
-  const token = (ui.transitionToken += 1);
-  wipe.classList.remove("is-out");
-  wipe.classList.add("is-active");
-  window.setTimeout(() => {
-    if (token !== ui.transitionToken) return;
-    ui.route = route;
-    ui.scene?.destroy();
-    ui.scene = null;
-    renderShell({ focusPage: true });
-    window.scrollTo(0, 0);
-    wipe.classList.add("is-out");
-    window.setTimeout(() => {
-      if (token !== ui.transitionToken) return;
-      wipe.classList.remove("is-active", "is-out");
-    }, 210);
-  }, 185);
+  ui.route = route;
+  renderShell({ focusPage: true });
+  window.scrollTo({ top: 0, left: 0, behavior: "auto" });
 }
 
 function boot() {
@@ -413,13 +455,18 @@ function onDocumentClick(event) {
   const nav = target.closest("a[data-nav]");
   if (nav) {
     audio.play("nav");
-    if (nav.getAttribute("href") === `#/${ui.route}`) {
+    const href = nav.getAttribute("href");
+    const wasDiaryTab = ui.diaryTab;
+    if (href === "#/diary") ui.diaryTab = "journal";
+    if (href === `#/${ui.route}`) {
       event.preventDefault();
       if (ui.route === "places" && ui.activePlace) {
         ui.activePlace = null;
         ui.placeSpeech = "";
         renderShell({ focusPage: true });
-        window.scrollTo(0, 0);
+        window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+      } else if (ui.route === "diary" && wasDiaryTab !== "journal") {
+        refreshAll({ keepScroll: false });
       } else {
         window.scrollTo({ top: 0, behavior: REDUCED_MOTION ? "auto" : "smooth" });
       }
@@ -455,6 +502,13 @@ function handleAction(action, el) {
       break;
     case "poke-scene":
       pokeScene();
+      break;
+    case "home-hotspot":
+      touchHomeHotspot(el.dataset.hotspot);
+      break;
+    case "go-places":
+      audio.play("nav");
+      location.hash = "#/places";
       break;
     case "open-place":
       openPlace(el.dataset.place);
@@ -576,6 +630,39 @@ function handleAction(action, el) {
     case "step-condition":
       stepCondition(el);
       break;
+    case "diary-tab":
+      switchDiaryTab(el.dataset.tab);
+      break;
+    case "open-diary-chat":
+      ui.diaryTab = "chat";
+      ui.chatError = "";
+      audio.play("nav");
+      location.hash = "#/diary";
+      if (ui.route === "diary") switchDiaryTab("chat");
+      break;
+    case "edit-diary-entry":
+      audio.play("click");
+      openDiaryEntryModal(el.dataset.date);
+      break;
+    case "open-chat-settings":
+      audio.play("click");
+      openChatSettings();
+      break;
+    case "open-chat-key-page":
+      openExternal("https://platform.deepseek.com/api_keys");
+      break;
+    case "clear-chat-key":
+      askClearChatKey();
+      break;
+    case "clear-chat":
+      askClearChat();
+      break;
+    case "send-chat":
+      sendChatFromInput();
+      break;
+    case "chat-prompt":
+      sendChatTurn(el.dataset.text);
+      break;
     case "confirm-yes":
       runConfirmedAction();
       break;
@@ -648,6 +735,16 @@ function pokeScene() {
   ui.scene.poke();
   audio.play("click");
   say(pickLine(POKE_LINES), 3800);
+  $("#scene-hint")?.classList.add("is-hidden");
+}
+
+function touchHomeHotspot(hotspotId) {
+  const place = getHomePlace();
+  const spot = place.hotspots.find((item) => item.id === hotspotId);
+  if (!spot) return;
+  ui.scene?.hit(spot);
+  say(pickLine(spot.lines), 5200);
+  audio.play("click");
   $("#scene-hint")?.classList.add("is-hidden");
 }
 
@@ -805,18 +902,212 @@ function changeMonth(delta) {
  * Note
  * ------------------------------------------------------------------ */
 
+function markNoteSaved(text = "已保存") {
+  $$("[data-save-state]").forEach((el) => {
+    el.textContent = text;
+  });
+}
+
 function onNoteInput(event) {
   if (!event.target.matches("[data-note]")) return;
   const value = event.target.value;
-  const counter = $("#note-count");
-  if (counter) counter.textContent = `${value.length}/120`;
+  $$("[data-note-count]").forEach((el) => {
+    el.textContent = `${value.length} 字`;
+  });
+  markNoteSaved("正在写…");
   ui.noteDraft = value;
   if (ui.noteTimer) window.clearTimeout(ui.noteTimer);
   ui.noteTimer = window.setTimeout(() => {
     store.setNote(value);
     ui.noteTimer = null;
     ui.noteDraft = null;
-  }, 420);
+    markNoteSaved("已保存");
+  }, 380);
+}
+
+function onChatInput(event) {
+  const input = event.target.closest?.("#chat-input");
+  if (!input) return;
+  input.style.height = "auto";
+  input.style.height = `${Math.min(input.scrollHeight, 150)}px`;
+}
+
+/* ------------------------------------------------------------------ *
+ * Diary & DeepSeek chat
+ * ------------------------------------------------------------------ */
+
+function diaryFullDate(key) {
+  const date = new Date(`${key}T12:00:00`);
+  const week = ["日", "一", "二", "三", "四", "五", "六"][date.getDay()];
+  return `${date.getFullYear()} 年 ${date.getMonth() + 1} 月 ${date.getDate()} 日 · 周${week}`;
+}
+
+function switchDiaryTab(tab) {
+  const next = tab === "chat" ? "chat" : "journal";
+  if (ui.diaryTab === next) {
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+    return;
+  }
+  ui.diaryTab = next;
+  ui.chatError = "";
+  audio.play("nav");
+  refreshAll({ keepScroll: false });
+}
+
+function openDiaryEntryModal(key) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(key))) return;
+  const note = store.getNoteForDate(key);
+  const log = store.getLog(key);
+  const bits = [];
+  if (log?.done?.length) bits.push(`点亮 ${log.done.length} 件`);
+  if (log?.rest) bits.push("来喘过气");
+  if (log?.energy && ENERGY[log.energy]) bits.push(ENERGY[log.energy].label);
+  openModal(`
+    ${modalHead("这一页日记", "DIARY PAGE")}
+    <p class="modal-sub">${diaryFullDate(key)}${bits.length ? ` · ${bits.join(" · ")}` : ""}</p>
+    <form class="modal-form" data-form="diary-entry" data-date="${key}">
+      <label class="field-label" for="diary-entry-note">写给这一天</label>
+      <textarea id="diary-entry-note" class="diary-textarea" name="note" rows="10" placeholder="空一行，就是新的一段。写多少都可以。" data-autofocus>${esc(note)}</textarea>
+      <p class="form-hint">这一页只会保存在这台设备上。清空内容再保存，就会移除这一页。</p>
+      <p class="form-error" hidden></p>
+      <div class="form-actions">
+        <span></span>
+        <div class="form-actions__right">
+          <button class="pixel-btn pixel-btn--ghost" type="button" data-action="close-modal">取消</button>
+          <button class="pixel-btn pixel-btn--gold" type="submit">收好这一页</button>
+        </div>
+      </div>
+    </form>
+  `, { className: "modal--diary" });
+}
+
+function openChatSettings() {
+  const settings = getChatSettings();
+  const masked = maskKey(settings.apiKey);
+  openModal(`
+    ${modalHead("连接 DeepSeek", "CHAT SETTINGS")}
+    <p class="modal-sub">小灯会用 DeepSeek V4.1 Flash 陪你说话。Key 只保存在这台设备里，不进入导出备份，也不会经过微光小屋的服务器。</p>
+    <form class="modal-form" data-form="chat-settings">
+      <label class="field-label" for="chat-key">DeepSeek API Key</label>
+      <input id="chat-key" class="text-input" name="apiKey" type="password" autocomplete="off" spellcheck="false" placeholder="${masked ? `已保存 ${masked}，留空保留` : "sk-..."}" data-autofocus>
+      <p class="form-hint">在 <a href="https://platform.deepseek.com/api_keys" target="_blank" rel="noopener" data-action="open-chat-key-page">DeepSeek 开放平台</a> 创建。建议单独建一个只用于小屋的 Key。</p>
+      <label class="field-label" for="chat-model">模型</label>
+      <select id="chat-model" class="text-input select-input" name="model">
+        <option value="deepseek-flash" ${settings.model === "deepseek-flash" ? "selected" : ""}>deepseek-flash · V4.1 Flash</option>
+        <option value="deepseek-v4-pro" ${settings.model === "deepseek-v4-pro" ? "selected" : ""}>deepseek-v4-pro · 更慢更稳</option>
+      </select>
+      <details class="chat-advanced">
+        <summary>高级：接口地址</summary>
+        <label class="field-label" for="chat-base">Base URL</label>
+        <input id="chat-base" class="text-input" name="baseUrl" type="url" value="${esc(settings.baseUrl)}" placeholder="https://api.deepseek.com" autocomplete="off" spellcheck="false">
+        <p class="form-hint">默认直接连接 <code>api.deepseek.com</code>。如果你有自己搭的兼容代理，也可以填在这里。</p>
+      </details>
+      <p class="form-error" hidden></p>
+      <div class="form-actions">
+        <div>
+          ${settings.apiKey ? `<button class="text-btn text-btn--danger" type="button" data-action="clear-chat-key">删除已保存的 Key</button>` : ""}
+        </div>
+        <div class="form-actions__right">
+          <button class="pixel-btn pixel-btn--ghost" type="button" data-action="close-modal">取消</button>
+          <button class="pixel-btn pixel-btn--gold" type="submit">${icon("spark")} 保存连接</button>
+        </div>
+      </div>
+    </form>
+    <p class="chat-fine">聊天内容会发送给 DeepSeek。请不要在聊天里写密码、身份证号等敏感信息。</p>
+  `, { className: "modal--chat-settings" });
+}
+
+function askClearChatKey() {
+  if (!hasChatKey()) return;
+  openConfirm({
+    title: "删除 API Key？",
+    body: "删除后小灯会停止联网聊天。日记和聊天记录都会保留。",
+    confirmLabel: "删除 Key",
+    danger: true,
+    onConfirm: () => {
+      clearChatKey();
+      ui.chatError = "";
+      if (ui.route === "diary") refreshAll({ keepScroll: false });
+      toast("API Key 已从这台设备删除。", { iconName: "lock" });
+    }
+  });
+}
+
+function askClearChat() {
+  openConfirm({
+    title: "清空聊天记录？",
+    body: "只会删除和小灯的聊天，不会动日记本和打卡记录。",
+    confirmLabel: "清空聊天",
+    danger: true,
+    onConfirm: () => {
+      clearChatMessages();
+      ui.chatError = "";
+      refreshAll({ keepScroll: false });
+      toast("聊天记录清空了。", { iconName: "trash" });
+    }
+  });
+}
+
+function chatContextSummary() {
+  const state = store.getState();
+  const stats = store.getStats();
+  const overview = store.getTodayOverview();
+  const energy = overview.log?.energy && ENERGY[overview.log.energy]
+    ? ENERGY[overview.log.energy].label
+    : "还没选";
+  return [
+    `今天是 ${store.dateKey()}`,
+    `用户称呼：${state.profile.name || "还没留名字"}`,
+    `今天完成了 ${overview.doneCount}/${overview.total} 件小事`,
+    `能量状态：${energy}`,
+    `历史最长连续：${stats.longestStreak || 0} 天`,
+    `此刻在场景：${getHomePlace().name}`
+  ].join("；") + "。";
+}
+
+async function sendChatTurn(rawText) {
+  const text = String(rawText || "").trim().slice(0, 4000);
+  if (!text || ui.chatSending) return;
+  if (!hasChatKey()) {
+    audio.play("click");
+    toast("先填一个 DeepSeek API Key，才能联网聊天。", { iconName: "lock" });
+    openChatSettings();
+    return;
+  }
+  if (navigator.onLine === false) {
+    ui.chatError = "现在没有联网。等有网了再和小灯说话吧。";
+    ui.diaryTab = "chat";
+    refreshAll({ keepScroll: true });
+    return;
+  }
+  const settings = getChatSettings();
+  appendChatMessage("user", text);
+  ui.chatSending = true;
+  ui.chatError = "";
+  ui.diaryTab = "chat";
+  audio.play("click");
+  refreshAll({ keepScroll: true });
+  try {
+    const result = await sendChatMessage(getChatMessages(), settings, chatContextSummary());
+    appendChatMessage("assistant", result.content);
+  } catch (error) {
+    ui.chatError = error instanceof ChatError ? error.message : "刚才没有接上话，再试一次吧。";
+  } finally {
+    ui.chatSending = false;
+    if (ui.route === "diary" && ui.diaryTab === "chat") {
+      refreshAll({ keepScroll: true });
+    }
+  }
+}
+
+function sendChatFromInput() {
+  const input = $("#chat-input");
+  const text = input?.value || "";
+  if (!text.trim()) {
+    input?.focus();
+    return;
+  }
+  sendChatTurn(text);
 }
 
 /* ------------------------------------------------------------------ *
@@ -1496,13 +1787,18 @@ function askReset() {
     onConfirm: () => {
       closeModal({ instant: true });
       store.resetAll();
+      clearChatMessages();
+      clearChatKey();
+      ui.chatError = "";
+      ui.chatSending = false;
+      ui.diaryTab = "journal";
       ui.calendar = { year: new Date().getFullYear(), month: new Date().getMonth() + 1 };
       ui.speech = "";
       ui.speechUntil = 0;
       ui.route = "today";
       history.replaceState(null, "", "#/today");
       renderShell();
-      window.scrollTo(0, 0);
+      window.scrollTo({ top: 0, left: 0, behavior: "auto" });
       window.setTimeout(openOnboarding, 350);
     }
   });
@@ -1637,6 +1933,47 @@ async function onDocumentSubmit(event) {
     refreshAll({ keepScroll: true });
     audio.play("click");
     toast("记住啦。", { iconName: "pen" });
+    return;
+  }
+
+  if (type === "diary-entry") {
+    const key = form.dataset.date;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(String(key))) return;
+    const fd = new FormData(form);
+    store.setNoteForDate(key, String(fd.get("note") || ""));
+    closeModal();
+    refreshAll({ keepScroll: true });
+    audio.play("check");
+    toast("这一页收好了。", { iconName: "book" });
+    return;
+  }
+
+  if (type === "chat-settings") {
+    const current = getChatSettings();
+    const fd = new FormData(form);
+    const writtenKey = String(fd.get("apiKey") || "").trim();
+    const apiKey = writtenKey || current.apiKey;
+    if (!apiKey) {
+      showFormError(form, "先填一个 DeepSeek API Key 吧。");
+      $("#chat-key", form)?.focus();
+      return;
+    }
+    try {
+      saveChatSettings({
+        apiKey,
+        model: String(fd.get("model") || "deepseek-flash"),
+        baseUrl: String(fd.get("baseUrl") || "https://api.deepseek.com")
+      });
+    } catch (error) {
+      showFormError(form, error instanceof ChatError ? error.message : "这个设置暂时存不下来。");
+      return;
+    }
+    closeModal();
+    ui.chatError = "";
+    ui.diaryTab = "chat";
+    refreshAll({ keepScroll: false });
+    audio.play("open");
+    toast("连上了。想说什么都可以。", { iconName: "spark", tone: "gold" });
   }
 }
 
@@ -1784,6 +2121,12 @@ function floatPoints(x, y, text, tone = "gold") {
  * ------------------------------------------------------------------ */
 
 function onKeyDown(event) {
+  const chatInput = event.target.closest?.("#chat-input");
+  if (chatInput && event.key === "Enter" && !event.shiftKey && !event.isComposing) {
+    event.preventDefault();
+    sendChatFromInput();
+    return;
+  }
   const root = $("#modal-root");
   if (!root || root.hidden) return;
   if (event.key === "Escape" && ui.modalDismissible) {
@@ -1818,6 +2161,7 @@ function bindGlobalEvents() {
   document.addEventListener("click", onDocumentClick);
   document.addEventListener("submit", onDocumentSubmit);
   document.addEventListener("input", onNoteInput);
+  document.addEventListener("input", onChatInput);
   document.addEventListener("change", onConditionChange);
   document.addEventListener("change", onFileChange);
   document.addEventListener("keydown", onKeyDown);
@@ -1830,12 +2174,7 @@ function bindGlobalEvents() {
     maybeCheckUpdatesOnBoot();
   });
   document.addEventListener("visibilitychange", () => {
-    if (!document.hidden) {
-      checkDayChange();
-      if (ui.route === "today" && ui.scene) {
-        ui.scene.setProgress(store.getTodayOverview().doneCount, store.getTodayOverview().total);
-      }
-    }
+    if (!document.hidden) checkDayChange();
   });
   window.addEventListener("beforeunload", flushNote);
 }

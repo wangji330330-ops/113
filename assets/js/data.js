@@ -1,9 +1,21 @@
-export const APP_VERSION = "0.2.0";
-export const APP_BUILD = 2;
+export const APP_VERSION = "0.3.0";
+export const APP_BUILD = 3;
 export const APP_RELEASED_AT = "2026-10-18";
 export const STORE_KEY = "glimmer-nook:v1";
 
 export const CHANGELOG = [
+  {
+    version: "0.3.0",
+    date: "2026-10-18",
+    title: "场景住进首页，日记本和联网小灯",
+    items: [
+      "每次打开或刷新，今日页会随机换一个场景；13 个场景都可以直接停留和点击。",
+      "底部导航加入日记本；「给今天留一句话」不再限字数，按日期归档，空一行自动分段。",
+      "日记本里新增「和小灯聊聊」：接入 DeepSeek V4.1 Flash，需要自己的 API Key，聊天只保存在本机。",
+      "页面切换改为即时渲染，不再等待全屏擦除；场景缩略图改为分批绘制，切换更轻。",
+      "场景入口移到今日页和设置里；旧的场景页仍然保留，可以从「去走走」进入。"
+    ]
+  },
   {
     version: "0.2.0",
     date: "2026-10-18",

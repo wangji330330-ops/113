@@ -52,6 +52,14 @@ function clampText(value, max) {
   return String(value ?? "").replace(/\s+/g, " ").trim().slice(0, max);
 }
 
+function cleanNote(value) {
+  return String(value ?? "")
+    .replace(/\r\n?/g, "\n")
+    .replace(/\u0000/g, "")
+    .slice(0, 200000)
+    .replace(/^\n+|\n+$/g, "");
+}
+
 function safeId(value, prefix) {
   const id = String(value || "");
   return /^[A-Za-z0-9_-]{1,80}$/.test(id) ? id : uid(prefix);
@@ -106,7 +114,7 @@ function makeLogEntry(raw = {}) {
     done,
     rest: Boolean(raw.rest),
     restAt: raw.restAt || null,
-    note: clampText(raw.note, 280),
+    note: cleanNote(raw.note),
     noteAt: raw.noteAt || null
   };
 }
@@ -221,7 +229,11 @@ export function getState() {
 }
 
 export function ensureTodayLog() {
-  const key = dateKey();
+  return ensureLog(dateKey());
+}
+
+export function ensureLog(key) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(key))) return ensureLog(dateKey());
   if (!state.logs[key]) {
     state.logs[key] = makeLogEntry({});
   }
@@ -267,12 +279,34 @@ export function setEnergy(energy) {
   return log.energy;
 }
 
-export function setNote(note) {
-  const log = ensureTodayLog();
-  log.note = clampText(note, 280);
+export function setNote(note, key = dateKey()) {
+  const log = ensureLog(key);
+  log.note = cleanNote(note);
   log.noteAt = log.note ? nowIso() : null;
   persist();
   return log.note;
+}
+
+export function setNoteForDate(key, note) {
+  return setNote(note, key);
+}
+
+export function getNoteForDate(key = dateKey()) {
+  return state.logs[key]?.note || "";
+}
+
+export function getDiaryEntries() {
+  return Object.entries(state.logs)
+    .filter(([, log]) => Boolean(log.note && log.note.trim()))
+    .map(([date, log]) => ({
+      date,
+      note: log.note,
+      noteAt: log.noteAt,
+      doneCount: Array.isArray(log.done) ? log.done.length : 0,
+      rest: Boolean(log.rest),
+      energy: log.energy || null
+    }))
+    .sort((a, b) => b.date.localeCompare(a.date));
 }
 
 function activeDayKeys() {
