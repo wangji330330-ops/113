@@ -123,7 +123,7 @@ public class MainActivity extends Activity {
         super.onDestroy();
     }
 
-    /** Small, local-only bridge used for opening the APK download page. */
+    /** Small, local-only bridge used for the APK download page and web chat. */
     private class WebAppBridge {
         @JavascriptInterface
         public void openExternal(String url) {
@@ -134,6 +134,17 @@ public class MainActivity extends Activity {
                     startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)));
                 } catch (Exception ignored) {
                     // No browser installed; the web UI shows a fallback link.
+                }
+            });
+        }
+
+        @JavascriptInterface
+        public void openDeepSeekWeb() {
+            runOnUiThread(() -> {
+                try {
+                    startActivity(new Intent(MainActivity.this, DeepSeekWebActivity.class));
+                } catch (Exception ignored) {
+                    // The web UI still offers the normal external link as a fallback.
                 }
             });
         }

@@ -481,6 +481,14 @@ function onDocumentClick(event) {
     if (event.target === actionEl && ui.modalDismissible) closeModal();
     return;
   }
+  if (
+    action === "open-deepseek-web" &&
+    actionEl.tagName === "A" &&
+    !(window.GlimmerAndroid && typeof window.GlimmerAndroid.openDeepSeekWeb === "function")
+  ) {
+    audio.play("nav");
+    return;
+  }
   if (actionEl.tagName === "A") event.preventDefault();
   handleAction(action, actionEl, event);
 }
@@ -650,6 +658,9 @@ function handleAction(action, el) {
       break;
     case "open-chat-key-page":
       openExternal("https://platform.deepseek.com/api_keys");
+      break;
+    case "open-deepseek-web":
+      openDeepSeekWeb();
       break;
     case "clear-chat-key":
       askClearChatKey();
@@ -1013,8 +1024,35 @@ function openChatSettings() {
         </div>
       </div>
     </form>
+    <div class="chat-web-entry">
+      <b>不想用 API？</b>
+      <a class="text-btn" href="https://chat.deepseek.com/" target="_blank" rel="noopener" data-action="open-deepseek-web">打开 DeepSeek 网页版（免费）↗</a>
+      <p>登录和对话在 DeepSeek 页面完成，不会自动写进小屋。</p>
+    </div>
     <p class="chat-fine">聊天内容会发送给 DeepSeek。请不要在聊天里写密码、身份证号等敏感信息。</p>
   `, { className: "modal--chat-settings" });
+}
+
+function openDeepSeekWeb() {
+  audio.play("nav");
+  if (window.GlimmerAndroid && typeof window.GlimmerAndroid.openDeepSeekWeb === "function") {
+    try {
+      window.GlimmerAndroid.openDeepSeekWeb();
+      return;
+    } catch {
+      // Fall through to the normal browser route.
+    }
+  }
+  try {
+    const opened = window.open("https://chat.deepseek.com/", "_blank");
+    if (opened) {
+      opened.opener = null;
+    } else {
+      toast("浏览器拦住了新标签。可以手动打开 chat.deepseek.com。", { iconName: "lantern" });
+    }
+  } catch {
+    toast("没有打开网页版。可以手动访问 chat.deepseek.com。", { iconName: "lantern" });
+  }
 }
 
 function askClearChatKey() {

@@ -756,6 +756,8 @@ function renderChat({ chatMessages, chatSettings, chatConfigured, chatSending, c
         </div>
         <a class="text-btn" href="https://platform.deepseek.com/api_keys" target="_blank" rel="noopener" data-action="open-chat-key-page">去 DeepSeek 创建 API Key ↗</a>
         <button class="pixel-btn pixel-btn--gold pixel-btn--wide" type="button" data-action="open-chat-settings">${icon("spark")} 连接 DeepSeek</button>
+        <a class="pixel-btn pixel-btn--ghost pixel-btn--wide chat-web-btn" href="https://chat.deepseek.com/" target="_blank" rel="noopener" data-action="open-deepseek-web">${icon("right")} 打开 DeepSeek 网页版（免费）</a>
+        <p class="chat-fine">网页版会在新标签或应用内浏览器打开；登录和对话由 DeepSeek 页面完成，不会自动写进小屋。</p>
         <p class="chat-fine">没有 Key 也没关系。日记本和所有场景都可以离线使用。</p>
       </section>
     `;
@@ -990,6 +992,11 @@ export function renderMe({ state, stats, calendar, versionInfo = null, updateAva
               <span class="setting-row__copy"><b>和小灯聊天</b><small>DeepSeek V4.1 Flash · 需要自己的 API Key</small></span>
               <span class="setting-arrow">${icon("right")}</span>
             </button>
+            <a class="setting-row" href="https://chat.deepseek.com/" target="_blank" rel="noopener" data-action="open-deepseek-web">
+              <span class="setting-row__icon">${icon("book")}</span>
+              <span class="setting-row__copy"><b>DeepSeek 网页版</b><small>免费登录使用；对话不会自动存进小屋</small></span>
+              <span class="setting-arrow">${icon("right")}</span>
+            </a>
             <button class="setting-row" type="button" data-action="export-data">
               <span class="setting-row__icon">${icon("download")}</span>
               <span class="setting-row__copy"><b>导出备份</b><small>把全部记录存成一个文件</small></span>

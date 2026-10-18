@@ -2031,6 +2031,7 @@ canvas {
   padding: 9px 0;
   color: var(--ink);
   text-align: left;
+  text-decoration: none;
   background: none;
   border: 0;
   border-bottom: 1px dashed var(--line-soft);
@@ -5200,3 +5201,34 @@ html.no-motion *::after {
 }
 
 
+
+.chat-setup .chat-web-btn {
+  display: flex;
+  max-width: 300px;
+  margin: 8px auto 0;
+}
+
+.chat-web-entry {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--line-soft);
+}
+
+.chat-web-entry b {
+  color: var(--ink-soft);
+  font-size: 9px;
+  font-weight: 400;
+}
+
+.chat-web-entry .text-btn { font-size: 9px; }
+
+.chat-web-entry p {
+  flex: 1 0 100%;
+  color: var(--muted-deep);
+  font-size: 8px;
+  line-height: 1.6;
+}

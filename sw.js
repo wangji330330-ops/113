@@ -1,5 +1,5 @@
 /* 微光小屋 offline cache */
-const CACHE = "glimmer-nook-v0.3.0";
+const CACHE = "glimmer-nook-v0.3.1";
 const FONT_CSS = "./assets/fonts/fusion-pixel/fusion-pixel.css";
 const CORE = [
   "./",

@@ -1,9 +1,19 @@
-export const APP_VERSION = "0.3.0";
-export const APP_BUILD = 3;
+export const APP_VERSION = "0.3.1";
+export const APP_BUILD = 4;
 export const APP_RELEASED_AT = "2026-10-18";
 export const STORE_KEY = "glimmer-nook:v1";
 
 export const CHANGELOG = [
+  {
+    version: "0.3.1",
+    date: "2026-10-19",
+    title: "DeepSeek 网页版入口",
+    items: [
+      "新增「打开 DeepSeek 网页版」入口：Android 在应用内浏览器打开，网页版在新标签打开。",
+      "网页版免费登录使用，但登录和对话都在 DeepSeek 页面完成，不会自动写进小屋或日记。",
+      "想自动保存对话、写进日记，仍然需要使用 API Key；两者互不影响。"
+    ]
+  },
   {
     version: "0.3.0",
     date: "2026-10-18",

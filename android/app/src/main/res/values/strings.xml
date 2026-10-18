@@ -1,4 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">微光小屋</string>
+    <string name="deepseek_web_title">DeepSeek 网页版</string>
+    <string name="deepseek_web_open_browser">浏览器</string>
+    <string name="deepseek_web_close">关闭</string>
+    <string name="deepseek_web_error">没有打开 DeepSeek 网页。检查网络，或点右上角用浏览器打开。</string>
+    <string name="deepseek_web_no_browser">没有找到可用的浏览器。</string>
 </resources>

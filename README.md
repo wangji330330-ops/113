@@ -16,8 +16,8 @@
 </p>
 
 - 网页版：<https://wangji330330-ops.github.io/113/>
-- Android：[下载调试 APK v0.3.0](https://github.com/wangji330330-ops/113/releases/download/v0.3.0/glimmer-nook-v0.3.0-debug.apk)
-- [GitHub Release v0.3.0](https://github.com/wangji330330-ops/113/releases/tag/v0.3.0)
+- Android：[下载调试 APK v0.3.1](https://github.com/wangji330330-ops/113/releases/download/v0.3.1/glimmer-nook-v0.3.1-debug.apk)
+- [GitHub Release v0.3.1](https://github.com/wangji330330-ops/113/releases/tag/v0.3.1)
 - [更新日志](CHANGELOG.md)
 
 ## 现在有什么
@@ -28,6 +28,7 @@
   - 外面：学校、图书馆、电影院、郊游、超市、球场、江边、爬山、兜风
 - **日记本**：按日期归档每天的文字。「给今天留一句话」不再限制字数，空一行自动分段；旧日记可以单独打开编辑。日记只保存在本机。
 - **和小灯聊聊**：可选接入 DeepSeek V4.1 Flash。需要你自己的 DeepSeek API Key，直接在设备上请求官方接口，不经过第三方代理。没有 Key 时，其他功能完全不受影响。
+- **DeepSeek 网页版入口**：不想用 API 也可以免费登录网页版。Android 在应用内浏览器打开，网页版在新标签打开；登录和对话由 DeepSeek 页面完成，不会自动写进小屋。
 - **人物换装**：头、面、身、腿、鞋分开搭配，多种选择；在「小屋 → 人物形象」或今日页的「换个样子」进入。
 - **今日打卡**：三件预置小事，可自由增删改；点一下完成任务，点错再点一下即可取消。
 - **能量签到**：快没电 / 还行 / 有点光。只影响小灯的表情和对话，不影响奖励。
@@ -55,6 +56,17 @@
 - 不要把密码、身份证号、住址等敏感信息发进聊天。
 - 没有联网或没有 Key 时，小灯不会假装回答；日记本、场景、打卡、奖励都可以照常离线使用。
 
+## DeepSeek 网页版（免费）
+
+如果你不想充 API，也可以直接用 DeepSeek 网页版：
+
+- 入口在「日记 → 和小灯聊聊」的说明卡里，以及「小屋设置 → DeepSeek 网页版」。
+- Android APK：在应用内的浏览器页面打开，保留登录 Cookie；右上角「浏览器」可以切到系统浏览器。
+- 网页版 / PWA：在新标签页打开 `chat.deepseek.com`。
+- 这条路径完全免费，但登录、验证码和对话都在 DeepSeek 的页面里完成。小屋读不到网页内容，也不会把对话自动存进日记。
+- 如果想要「聊天自动保存在小屋里、可以写进日记」，仍然需要 API；网页版和 API 是两条独立的路，互不影响。
+- 网页版需要联网；如果 DeepSeek 在 WebView 里拦截登录或验证码，点右上角「浏览器」用系统浏览器打开。
+
 ## 更新机制
 
 - 网页版、PWA：设置里的「版本与更新」会读取 `version.json`。有新版时点「更新并刷新」，会先更新 Service Worker，再重新载入新资源；打卡数据存在本地，不会丢。
@@ -80,10 +92,10 @@ npm start
 
 ## 下载 Android APK
 
-- Release 下载：[glimmer-nook-v0.3.0-debug.apk](https://github.com/wangji330330-ops/113/releases/download/v0.3.0/glimmer-nook-v0.3.0-debug.apk)（约 2.2 MB）
-- 仓库镜像：[download/glimmer-nook-v0.3.0-debug.apk](download/glimmer-nook-v0.3.0-debug.apk)
-- 校验：[SHA256](download/glimmer-nook-v0.3.0-debug.apk.sha256)
-- 支持 Android 7.0（API 24）及以上，版本 0.3.0（versionCode 3）。
+- Release 下载：[glimmer-nook-v0.3.1-debug.apk](https://github.com/wangji330330-ops/113/releases/download/v0.3.1/glimmer-nook-v0.3.1-debug.apk)（约 2.2 MB）
+- 仓库镜像：[download/glimmer-nook-v0.3.1-debug.apk](download/glimmer-nook-v0.3.1-debug.apk)
+- 校验：[SHA256](download/glimmer-nook-v0.3.1-debug.apk.sha256)
+- 支持 Android 7.0（API 24）及以上，版本 0.3.1（versionCode 4）。
 
 安装步骤：
 
@@ -176,3 +188,4 @@ download/                   APK 与校验文件
 ## 字体
 
 [Fusion Pixel Font / 缝合像素字体](https://github.com/TakWolf/fusion-pixel-font)，SIL Open Font License 1.1。许可证见 `assets/fonts/fusion-pixel/LICENSE-OFL.txt`。
+

@@ -1,15 +1,14 @@
 {
-  "version": "0.3.0",
-  "build": 3,
-  "releasedAt": "2026-10-18",
-  "title": "场景住进首页，日记本和联网小灯",
+  "version": "0.3.1",
+  "build": 4,
+  "releasedAt": "2026-10-19",
+  "title": "DeepSeek 网页版入口",
   "notes": [
-    "今日页每次打开随机换一个场景，13 个场景都可以直接点击。",
-    "新增按日期归档的日记本，不再限制字数，空一行自动分段。",
-    "可选接入 DeepSeek V4.1 Flash：在日记本里和小灯聊天，需要自己的 API Key。",
-    "页面切换改为即时渲染，场景缩略图分批绘制，切换更轻。"
+    "新增 DeepSeek 网页版入口：Android 在应用内浏览器打开，网页版在新标签打开。",
+    "网页版免费登录使用；登录和对话在 DeepSeek 页面完成，不会自动写进小屋。",
+    "想自动保存对话、写进日记，仍然需要 API Key。"
   ],
   "webUrl": "https://wangji330330-ops.github.io/113/",
-  "apkUrl": "https://github.com/wangji330330-ops/113/releases/download/v0.3.0/glimmer-nook-v0.3.0-debug.apk",
-  "releaseUrl": "https://github.com/wangji330330-ops/113/releases/tag/v0.3.0"
+  "apkUrl": "https://github.com/wangji330330-ops/113/releases/download/v0.3.1/glimmer-nook-v0.3.1-debug.apk",
+  "releaseUrl": "https://github.com/wangji330330-ops/113/releases/tag/v0.3.1"
 }
