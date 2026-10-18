@@ -1,0 +1,12 @@
+node_modules/
+package-lock.json
+shots/
+.DS_Store
+Thumbs.db
+*.log
+android/app/src/main/assets/www/*
+!android/app/src/main/assets/www/.gitkeep
+
+.toolchain/
+*.apk
+!download/*.apk

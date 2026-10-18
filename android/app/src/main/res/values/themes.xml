@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.GlimmerNook" parent="@android:style/Theme.Material.NoActionBar">
+        <item name="android:windowBackground">#171326</item>
+        <item name="android:colorBackground">#171326</item>
+        <item name="android:statusBarColor">#171326</item>
+        <item name="android:navigationBarColor">#171326</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar">false</item>
+        <item name="android:windowActionModeOverlay">true</item>
+        <item name="android:windowNoTitle">true</item>
+    </style>
+</resources>

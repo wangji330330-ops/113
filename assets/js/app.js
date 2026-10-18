@@ -1,0 +1,1385 @@
+import {
+  ALL_DONE_LINES,
+  CHECK_LINES,
+  CONDITION_TYPES,
+  EFFORTS,
+  ENERGY,
+  HABIT_ICON_LABELS,
+  HABIT_ICONS,
+  IDLE_LINES,
+  POKE_LINES,
+  REST_LINES,
+  REWARD_ICON_LABELS,
+  REWARD_ICONS
+} from "./data.js";
+import * as store from "./store.js";
+import { icon } from "./icons.js";
+import { audio } from "./audio.js";
+import { Scene, paintPortrait } from "./scene.js";
+import {
+  renderAppBar,
+  renderHabits,
+  renderMe,
+  renderNav,
+  renderRewards,
+  renderToday
+} from "./views.js";
+import {
+  clamp,
+  conditionUnit,
+  dateKicker,
+  esc,
+  monthTitle
+} from "./helpers.js";
+
+const ROUTES = new Set(["today", "habits", "rewards", "me"]);
+const REDUCED_MOTION = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+const now = new Date();
+
+const ui = {
+  route: "today",
+  scene: null,
+  speech: "",
+  speechUntil: 0,
+  lastLine: "",
+  idleTimer: null,
+  noteTimer: null,
+  noteDraft: null,
+  pendingCelebrate: false,
+  focusAfterRender: null,
+  calendar: { year: now.getFullYear(), month: now.getMonth() + 1 },
+  modalDismissible: true,
+  lastFocus: null,
+  modalTimer: null,
+  confirmAction: null,
+  breatheTimer: null,
+  breatheUnlocked: [],
+  breatheCompleted: false,
+  transitionToken: 0,
+  booted: false,
+  currentDay: store.dateKey()
+};
+
+const $ = (selector, root = document) => root.querySelector(selector);
+const $$ = (selector, root = document) => Array.from(root.querySelectorAll(selector));
+
+function parseRoute() {
+  const raw = String(location.hash || "").replace(/^#\/?/, "").split(/[/?]/)[0];
+  return ROUTES.has(raw) ? raw : "today";
+}
+
+function pickLine(list) {
+  if (!list.length) return "";
+  let line = list[Math.floor(Math.random() * list.length)];
+  if (list.length > 1) {
+    let guard = 0;
+    while (line === ui.lastLine && guard < 6) {
+      line = list[Math.floor(Math.random() * list.length)];
+      guard += 1;
+    }
+  }
+  ui.lastLine = line;
+  return line;
+}
+
+function say(text, duration = 4600) {
+  if (!text) return;
+  ui.speech = text;
+  ui.speechUntil = Date.now() + duration;
+  updateSpeechDom();
+}
+
+function updateSpeechDom() {
+  const el = $("#scene-speech");
+  if (!el || !ui.speech) return;
+  el.textContent = ui.speech;
+  el.classList.remove("is-bump");
+  void el.offsetWidth;
+  el.classList.add("is-bump");
+}
+
+function currentSpeech() {
+  if (ui.speech && ui.speechUntil > Date.now()) return ui.speech;
+  ui.speech = pickLine(IDLE_LINES);
+  ui.speechUntil = Date.now() + 7000;
+  return ui.speech;
+}
+
+function setDocumentTitle() {
+  const titles = {
+    today: "微光小屋 · 一点点也算数",
+    habits: "我的小事 · 微光小屋",
+    rewards: "给自己的奖励 · 微光小屋",
+    me: "我的小屋 · 微光小屋"
+  };
+  document.title = titles[ui.route] || titles.today;
+}
+
+function renderShell({ focusPage = false } = {}) {
+  const state = store.getState();
+  const stats = store.getStats();
+  document.documentElement.classList.toggle("no-motion", !state.settings.motion);
+  $("#app-bar").innerHTML = renderAppBar({ state, stats });
+  $("#bottom-nav").innerHTML = renderNav({ route: ui.route, claimableCount: stats.claimableCount });
+  renderPage({ focusPage });
+}
+
+function renderPage({ focusPage = false } = {}) {
+  cleanupPage();
+  const state = store.getState();
+  const stats = store.getStats();
+  const page = $("#page");
+  let html = "";
+  if (ui.route === "today") {
+    const overview = store.getTodayOverview();
+    html = renderToday({ state, stats, overview, speech: currentSpeech() });
+  } else if (ui.route === "habits") {
+    html = renderHabits({ state, stats });
+  } else if (ui.route === "rewards") {
+    html = renderRewards({ state, stats });
+  } else {
+    html = renderMe({ state, stats, calendar: ui.calendar });
+  }
+  page.className = `page page--${ui.route}`;
+  page.innerHTML = html;
+  page.classList.remove("page-enter");
+  void page.offsetWidth;
+  page.classList.add("page-enter");
+  document.body.dataset.route = ui.route;
+  setDocumentTitle();
+  bindPage();
+  if (focusPage) {
+    try {
+      page.focus({ preventScroll: true });
+    } catch {
+      page.focus();
+    }
+  }
+  if (ui.focusAfterRender) {
+    const selector = ui.focusAfterRender;
+    ui.focusAfterRender = null;
+    const target = $(selector);
+    if (target && typeof target.focus === "function") {
+      try {
+        target.focus({ preventScroll: true });
+      } catch {
+        target.focus();
+      }
+    }
+  }
+}
+
+function bindPage() {
+  if (ui.route === "today") {
+    const canvas = $("#scene-canvas");
+    const overview = store.getTodayOverview();
+    if (canvas) {
+      ui.scene = new Scene(canvas, {
+        done: overview.doneCount,
+        total: overview.total,
+        mood: overview.log?.energy || null,
+        motion: store.getState().settings.motion && !REDUCED_MOTION
+      });
+      if (ui.pendingCelebrate) {
+        ui.pendingCelebrate = false;
+        window.setTimeout(() => ui.scene?.celebrate(), 60);
+      }
+    }
+    startIdleSpeech();
+  } else if (ui.route === "me") {
+    const portrait = $("#portrait-canvas");
+    if (portrait) paintPortrait(portrait);
+  }
+}
+
+function cleanupPage() {
+  flushNote();
+  if (ui.scene) {
+    ui.scene.destroy();
+    ui.scene = null;
+  }
+  if (ui.idleTimer) {
+    window.clearInterval(ui.idleTimer);
+    ui.idleTimer = null;
+  }
+}
+
+function startIdleSpeech() {
+  if (ui.idleTimer) window.clearInterval(ui.idleTimer);
+  ui.idleTimer = window.setInterval(() => {
+    if (ui.route !== "today") return;
+    if (Date.now() < ui.speechUntil) return;
+    ui.speech = pickLine(IDLE_LINES);
+    ui.speechUntil = Date.now() + 7000;
+    updateSpeechDom();
+  }, 13000);
+}
+
+function refreshAll({ celebrate = false, keepScroll = true, focus = null } = {}) {
+  flushNote();
+  ui.pendingCelebrate = Boolean(celebrate);
+  ui.focusAfterRender = focus;
+  const y = window.scrollY;
+  renderShell();
+  if (keepScroll) {
+    window.scrollTo(0, y);
+  } else {
+    window.scrollTo(0, 0);
+  }
+}
+
+function flushNote() {
+  if (ui.noteTimer) {
+    window.clearTimeout(ui.noteTimer);
+    ui.noteTimer = null;
+  }
+  if (ui.noteDraft !== null) {
+    store.setNote(ui.noteDraft);
+    ui.noteDraft = null;
+  }
+}
+
+function transitionTo(route) {
+  if (route === ui.route) return;
+  if (!ui.booted) {
+    ui.route = route;
+    renderShell({ focusPage: true });
+    return;
+  }
+  if (!$("#modal-root").hidden && ui.modalDismissible) closeModal({ instant: true });
+  clearToasts();
+  const wipe = $("#page-wipe");
+  const token = (ui.transitionToken += 1);
+  wipe.classList.remove("is-out");
+  wipe.classList.add("is-active");
+  window.setTimeout(() => {
+    if (token !== ui.transitionToken) return;
+    ui.route = route;
+    ui.scene?.destroy();
+    ui.scene = null;
+    renderShell({ focusPage: true });
+    window.scrollTo(0, 0);
+    wipe.classList.add("is-out");
+    window.setTimeout(() => {
+      if (token !== ui.transitionToken) return;
+      wipe.classList.remove("is-active", "is-out");
+    }, 210);
+  }, 185);
+}
+
+function boot() {
+  const initial = parseRoute();
+  ui.route = initial;
+  if (!location.hash || !location.hash.startsWith("#/")) {
+    history.replaceState(null, "", `#/${initial}`);
+  }
+  renderShell();
+  document.body.classList.remove("is-booting");
+  window.setTimeout(() => {
+    const el = $("#boot");
+    if (el) el.classList.add("is-hidden");
+  }, 260);
+  window.setTimeout(() => $("#boot")?.remove(), 900);
+  ui.booted = true;
+  bindGlobalEvents();
+  audio.setEnabled(store.getState().settings.sound);
+  if (!store.getState().profile.onboarded) {
+    window.setTimeout(openOnboarding, 700);
+  }
+  window.setInterval(checkDayChange, 30000);
+  registerServiceWorker();
+}
+
+function checkDayChange() {
+  const today = store.dateKey();
+  if (today === ui.currentDay) return;
+  ui.currentDay = today;
+  ui.speech = "";
+  ui.speechUntil = 0;
+  if (!$("#modal-root").hidden) return;
+  if (ui.route === "today") {
+    refreshAll({ keepScroll: true });
+    window.setTimeout(() => toast("新的一天，小屋的灯又亮起来了。", { iconName: "lantern" }), 350);
+  }
+}
+
+function registerServiceWorker() {
+  if (!("serviceWorker" in navigator) || !location.protocol.startsWith("http")) return;
+  if (["localhost", "127.0.0.1"].includes(location.hostname)) return;
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("./sw.js").catch((error) => {
+      console.warn("微光小屋：离线缓存暂时没有开启。", error);
+    });
+  });
+}
+
+/* ------------------------------------------------------------------ *
+ * Actions
+ * ------------------------------------------------------------------ */
+
+function onDocumentClick(event) {
+  const target = event.target instanceof Element ? event.target : null;
+  if (!target) return;
+
+  const nav = target.closest("a[data-nav]");
+  if (nav) {
+    audio.play("nav");
+    if (nav.getAttribute("href") === `#/${ui.route}`) {
+      event.preventDefault();
+      window.scrollTo({ top: 0, behavior: REDUCED_MOTION ? "auto" : "smooth" });
+    }
+    return;
+  }
+
+  const actionEl = target.closest("[data-action]");
+  if (!actionEl) return;
+  const action = actionEl.dataset.action;
+  if (action === "modal-backdrop") {
+    if (event.target === actionEl && ui.modalDismissible) closeModal();
+    return;
+  }
+  if (actionEl.tagName === "A") event.preventDefault();
+  handleAction(action, actionEl, event);
+}
+
+function handleAction(action, el) {
+  switch (action) {
+    case "close-modal":
+      audio.play("click");
+      closeModal();
+      break;
+    case "toggle-sound":
+      toggleSound();
+      break;
+    case "toggle-setting":
+      toggleSetting(el.dataset.key);
+      break;
+    case "set-energy":
+      chooseEnergy(el.dataset.energy);
+      break;
+    case "poke-scene":
+      pokeScene();
+      break;
+    case "toggle-habit":
+      toggleHabit(el.dataset.id, el);
+      break;
+    case "open-habit-modal":
+      audio.play("click");
+      openHabitModal();
+      break;
+    case "edit-habit":
+      audio.play("click");
+      openHabitModal(el.dataset.id);
+      break;
+    case "toggle-archive":
+      toggleArchive(el.dataset.id);
+      break;
+    case "delete-habit":
+      askDeleteHabit(el.dataset.id);
+      break;
+    case "open-reward-modal":
+      audio.play("click");
+      openRewardModal();
+      break;
+    case "edit-reward":
+      audio.play("click");
+      openRewardModal(el.dataset.id);
+      break;
+    case "delete-reward":
+      askDeleteReward(el.dataset.id);
+      break;
+    case "claim-reward":
+      claimReward(el.dataset.id);
+      break;
+    case "go-rewards":
+      audio.play("nav");
+      location.hash = "#/rewards";
+      break;
+    case "open-breathe":
+      audio.play("click");
+      openBreatheModal();
+      break;
+    case "start-breathe":
+      startBreathe(el);
+      break;
+    case "finish-breathe":
+      finishBreathe();
+      break;
+    case "edit-name":
+      audio.play("click");
+      openNameModal();
+      break;
+    case "export-data":
+      exportData();
+      break;
+    case "import-data":
+      audio.play("click");
+      $("#import-file")?.click();
+      break;
+    case "reset-data":
+      audio.play("click");
+      askReset();
+      break;
+    case "cal-prev":
+      changeMonth(-1);
+      break;
+    case "cal-next":
+      changeMonth(1);
+      break;
+    case "step-condition":
+      stepCondition(el);
+      break;
+    case "confirm-yes":
+      runConfirmedAction();
+      break;
+    default:
+      break;
+  }
+}
+
+function toggleSound(force) {
+  const current = store.getState().settings.sound;
+  const value = typeof force === "boolean" ? force : !current;
+  store.setSetting("sound", value);
+  audio.setEnabled(value);
+  if (value) audio.play("click");
+  syncSoundUI();
+  syncSettingSwitch("sound", value);
+}
+
+function toggleSetting(key) {
+  if (key === "sound") {
+    toggleSound();
+    return;
+  }
+  if (key === "motion") {
+    const current = store.getState().settings.motion;
+    const value = !current;
+    store.setSetting("motion", value);
+    document.documentElement.classList.toggle("no-motion", !value);
+    syncSettingSwitch("motion", value);
+    audio.play("click");
+    toast(value ? "小屋的动画打开了。" : "小屋会安静一点。", { iconName: value ? "spark" : "moon" });
+    return;
+  }
+}
+
+function syncSoundUI() {
+  const value = store.getState().settings.sound;
+  const button = $(".sound-btn");
+  if (button) {
+    button.innerHTML = icon(value ? "sound" : "mute");
+    button.setAttribute("aria-label", value ? "关闭音效" : "打开音效");
+    button.setAttribute("aria-pressed", String(value));
+  }
+}
+
+function syncSettingSwitch(key, value) {
+  const row = $(`[role="switch"][data-key="${key}"]`);
+  if (!row) return;
+  row.setAttribute("aria-checked", String(value));
+  row.querySelector(".switch")?.classList.toggle("is-on", value);
+}
+
+function chooseEnergy(energy) {
+  if (!ENERGY[energy]) return;
+  store.setEnergy(energy);
+  $$(".energy-option").forEach((button) => {
+    const active = button.dataset.energy === energy;
+    button.classList.toggle("is-active", active);
+    button.setAttribute("aria-pressed", String(active));
+  });
+  const note = $("#energy-note");
+  if (note) note.textContent = ENERGY[energy].note;
+  ui.scene?.setMood(energy);
+  say(ENERGY[energy].reply, 4200);
+  audio.play("click");
+}
+
+function pokeScene() {
+  if (!ui.scene) return;
+  ui.scene.poke();
+  audio.play("click");
+  say(pickLine(POKE_LINES), 3800);
+  $("#scene-hint")?.classList.add("is-hidden");
+}
+
+function toggleHabit(id, el) {
+  if (!id) return;
+  const rect = el?.getBoundingClientRect();
+  const result = store.toggleHabitDone(id);
+  if (!result) {
+    toast("这件小事已经收起来了，去「我的小事」里看看吧。", { iconName: "leaf" });
+    return;
+  }
+  const overview = store.getTodayOverview();
+  const line = result.completed
+    ? overview.allDone
+      ? pickLine(ALL_DONE_LINES)
+      : pickLine(CHECK_LINES)
+    : "取消啦，没关系。";
+  say(line, 5200);
+  if (result.completed) {
+    audio.play("check");
+    if (overview.allDone) {
+      window.setTimeout(() => audio.play("reward"), 220);
+      burstConfetti(18);
+    }
+  } else {
+    audio.play("undo");
+  }
+
+  if (rect) {
+    const x = clamp(rect.left + rect.width / 2, 32, window.innerWidth - 32);
+    const y = clamp(rect.top + 22, 32, window.innerHeight - 32);
+    floatPoints(x, y, result.completed ? `+${result.points} 微光` : `-${result.points} 微光`, result.completed ? "gold" : "muted");
+  }
+
+  refreshAll({
+    celebrate: result.completed,
+    keepScroll: true,
+    focus: `[data-action="toggle-habit"][data-id="${id}"]`
+  });
+  notifyUnlocked(result.unlocked);
+}
+
+function toggleArchive(id) {
+  const habit = store.getState().habits.find((item) => item.id === id);
+  if (!habit) return;
+  store.updateHabit(id, { active: !habit.active });
+  audio.play("click");
+  toast(habit.active ? "已经收起来了，想用时再放回来。" : "又回到今日清单里啦。", { iconName: "leaf" });
+  refreshAll({ keepScroll: true });
+}
+
+function askDeleteHabit(id) {
+  const habit = store.getState().habits.find((item) => item.id === id);
+  if (!habit) return;
+  closeModal({ instant: true });
+  openConfirm({
+    title: "删掉这件小事？",
+    body: `「${esc(habit.name)}」会从清单里消失。过去的打卡记录会保留，但之后不能再补打。`,
+    confirmLabel: "删掉",
+    danger: true,
+    onConfirm: () => {
+      store.deleteHabit(id);
+      refreshAll({ keepScroll: true });
+      toast("已经删掉了。过去的记录还在。", { iconName: "leaf" });
+    }
+  });
+}
+
+function askDeleteReward(id) {
+  const reward = store.getState().rewards.find((item) => item.id === id);
+  if (!reward) return;
+  closeModal({ instant: true });
+  openConfirm({
+    title: "删掉这份奖励？",
+    body: `「${esc(reward.title)}」会从小屋里消失。已经攒下的记录不会改变。`,
+    confirmLabel: "删掉",
+    danger: true,
+    onConfirm: () => {
+      store.deleteReward(id);
+      refreshAll({ keepScroll: true });
+      toast("已经删掉了。下次再给自己设一个新的吧。", { iconName: "gift" });
+    }
+  });
+}
+
+function claimReward(id) {
+  const reward = store.claimReward(id);
+  if (!reward) return;
+  audio.play("claim");
+  burstConfetti(30);
+  refreshAll({ keepScroll: true });
+  openClaimModal(reward);
+}
+
+function changeMonth(delta) {
+  const date = new Date(ui.calendar.year, ui.calendar.month - 1 + delta, 1, 12);
+  const current = new Date();
+  if (date.getFullYear() > current.getFullYear() || (date.getFullYear() === current.getFullYear() && date.getMonth() + 1 > current.getMonth() + 1)) {
+    return;
+  }
+  ui.calendar = { year: date.getFullYear(), month: date.getMonth() + 1 };
+  audio.play("nav");
+  refreshAll({
+    keepScroll: true,
+    focus: delta < 0 ? '[data-action="cal-prev"]' : '[data-action="cal-next"]'
+  });
+}
+
+/* ------------------------------------------------------------------ *
+ * Note
+ * ------------------------------------------------------------------ */
+
+function onNoteInput(event) {
+  if (!event.target.matches("[data-note]")) return;
+  const value = event.target.value;
+  const counter = $("#note-count");
+  if (counter) counter.textContent = `${value.length}/120`;
+  ui.noteDraft = value;
+  if (ui.noteTimer) window.clearTimeout(ui.noteTimer);
+  ui.noteTimer = window.setTimeout(() => {
+    store.setNote(value);
+    ui.noteTimer = null;
+    ui.noteDraft = null;
+  }, 420);
+}
+
+/* ------------------------------------------------------------------ *
+ * Modals
+ * ------------------------------------------------------------------ */
+
+function modalHead(title, kicker = "", { closable = true } = {}) {
+  return `
+    <div class="modal__head">
+      <div>
+        ${kicker ? `<p class="date-kicker">${esc(kicker)}</p>` : ""}
+        <h2 id="modal-title">${esc(title)}</h2>
+      </div>
+      ${closable ? `<button class="icon-btn" type="button" data-action="close-modal" aria-label="关闭">${icon("close")}</button>` : ""}
+    </div>
+  `;
+}
+
+function openModal(html, { className = "", dismissible = true, autofocus = true } = {}) {
+  const root = $("#modal-root");
+  clearToasts();
+  if (ui.modalTimer) {
+    window.clearTimeout(ui.modalTimer);
+    ui.modalTimer = null;
+  }
+  if (root.hidden) ui.lastFocus = document.activeElement;
+  root.hidden = false;
+  root.innerHTML = `
+    <div class="modal-backdrop" data-action="modal-backdrop">
+      <div class="modal ${className}" role="dialog" aria-modal="true" aria-labelledby="modal-title" tabindex="-1">
+        ${html}
+      </div>
+    </div>
+  `;
+  document.body.classList.add("modal-open");
+  ui.modalDismissible = dismissible;
+  requestAnimationFrame(() => {
+    $(".modal-backdrop", root)?.classList.add("is-open");
+  });
+  if (autofocus) {
+    window.setTimeout(() => {
+      const modal = $(".modal", root);
+      const preferred = $("[data-autofocus]", root) || $("input:not([type=hidden]), textarea, button", root) || modal;
+      try {
+        preferred?.focus({ preventScroll: false });
+      } catch {
+        preferred?.focus();
+      }
+    }, 70);
+  }
+}
+
+function closeModal({ instant = false } = {}) {
+  const root = $("#modal-root");
+  if (!root || root.hidden) return;
+  if (ui.breatheTimer) {
+    window.clearInterval(ui.breatheTimer);
+    ui.breatheTimer = null;
+  }
+  ui.breatheCompleted = false;
+  ui.confirmAction = null;
+  ui.modalDismissible = true;
+  document.body.classList.remove("modal-open");
+  const backdrop = $(".modal-backdrop", root);
+  if (backdrop) backdrop.classList.remove("is-open");
+  const finish = () => {
+    root.hidden = true;
+    root.innerHTML = "";
+    ui.modalTimer = null;
+  };
+  if (instant) {
+    finish();
+  } else {
+    ui.modalTimer = window.setTimeout(finish, 160);
+  }
+  if (ui.lastFocus && document.contains(ui.lastFocus) && typeof ui.lastFocus.focus === "function") {
+    try {
+      ui.lastFocus.focus({ preventScroll: true });
+    } catch {
+      /* ignore */
+    }
+  }
+  ui.lastFocus = null;
+}
+
+function openOnboarding() {
+  const name = store.getState().profile.name;
+  openModal(`
+    <div class="onboarding">
+      <div class="onboarding__sky" aria-hidden="true">
+        <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+      </div>
+      <div class="onboarding__lantern" aria-hidden="true">${icon("lantern")}</div>
+      <p class="date-kicker">WELCOME TO GLIMMER NOOK</p>
+      <h2 id="modal-title">欢迎来到微光小屋</h2>
+      <p class="onboarding__lead">这里不催你。做到一点点，就点亮一点点。</p>
+      <p class="onboarding__body">没有目标也没关系。先记录今天有没有喝水、有没有站起来走一走。等有力气的时候，再给自己设一个想要的奖励。</p>
+      <ul class="onboarding__points">
+        <li>${icon("seed")}<span>不用连续，不用满分。出现就算数。</span></li>
+        <li>${icon("spark")}<span>完成一件小事，就攒下一点微光。</span></li>
+        <li>${icon("gift")}<span>攒够了，就领取你写给自己的奖励。</span></li>
+      </ul>
+      <form data-form="onboarding" class="onboarding__form">
+        <label class="field-label" for="onboarding-name">怎么称呼你？<span>可以留空</span></label>
+        <input id="onboarding-name" class="text-input" type="text" name="name" maxlength="20" value="${esc(name)}" placeholder="比如：阿岚" autocomplete="nickname">
+        <button class="pixel-btn pixel-btn--gold pixel-btn--wide" type="submit" data-autofocus>推门进去</button>
+      </form>
+      <p class="onboarding__fine">已经给你留了三件小事，进去后随时可以改。<br>所有记录只保存在这台设备上。</p>
+    </div>
+  `, { className: "modal--onboarding", dismissible: false });
+}
+
+function openHabitModal(id = null) {
+  const habit = id ? store.getState().habits.find((item) => item.id === id) : null;
+  if (id && !habit) {
+    toast("找不到这件小事了。", { iconName: "leaf" });
+    return;
+  }
+  const value = habit || { name: "", icon: "spark", effort: 2 };
+  const iconChoices = HABIT_ICONS.map((name) => `
+    <label class="icon-choice" title="${esc(HABIT_ICON_LABELS[name] || name)}">
+      <input type="radio" name="icon" value="${name}" ${value.icon === name ? "checked" : ""}>
+      <span class="icon-choice__tile">${icon(name)}</span>
+      <small>${esc(HABIT_ICON_LABELS[name] || name)}</small>
+    </label>
+  `).join("");
+  const effortChoices = Object.entries(EFFORTS).map(([level, effort]) => `
+    <label class="effort-choice">
+      <input type="radio" name="effort" value="${level}" ${Number(value.effort) === Number(level) ? "checked" : ""}>
+      <span class="effort-choice__copy">
+        <b>${effort.label}</b>
+        <small>${effort.hint}</small>
+      </span>
+      <em>+${effort.points}</em>
+    </label>
+  `).join("");
+
+  openModal(`
+    ${modalHead(habit ? "编辑这件小事" : "加一件小事", "LITTLE THING")}
+    <form class="modal-form" data-form="habit" data-id="${habit ? esc(habit.id) : ""}">
+      <div class="form-error" hidden></div>
+      <label class="field-label" for="habit-name">它叫什么？</label>
+      <input id="habit-name" class="text-input" type="text" name="name" maxlength="30" value="${esc(value.name)}" placeholder="比如：喝一杯水" required data-autofocus>
+      <p class="field-hint">越具体越好。小到「现在就能做」，才算好目标。</p>
+
+      <fieldset class="field-group">
+        <legend class="field-label">选一个小图案</legend>
+        <div class="icon-grid">${iconChoices}</div>
+      </fieldset>
+
+      <fieldset class="field-group">
+        <legend class="field-label">它有多费力？</legend>
+        <div class="effort-list">${effortChoices}</div>
+      </fieldset>
+
+      <div class="form-actions">
+        ${habit ? `<button class="text-btn text-btn--danger" type="button" data-action="delete-habit" data-id="${esc(habit.id)}">删掉它</button>` : "<span></span>"}
+        <div class="form-actions__right">
+          <button class="pixel-btn pixel-btn--ghost" type="button" data-action="close-modal">取消</button>
+          <button class="pixel-btn pixel-btn--gold" type="submit">${habit ? "保存" : "放进小屋"}</button>
+        </div>
+      </div>
+    </form>
+  `, { className: "modal--form" });
+}
+
+function openRewardModal(id = null) {
+  const reward = id ? store.getState().rewards.find((item) => item.id === id) : null;
+  if (id && !reward) {
+    toast("找不到这份奖励了。", { iconName: "gift" });
+    return;
+  }
+  if (reward?.claimedAt) {
+    toast("已经收下的奖励，就留在小屋的回忆里吧。", { iconName: "heart" });
+    return;
+  }
+  const value = reward || {
+    title: "",
+    note: "",
+    icon: "gift",
+    condition: { type: "days", value: 3 }
+  };
+  const iconChoices = REWARD_ICONS.map((name) => `
+    <label class="icon-choice" title="${esc(REWARD_ICON_LABELS[name] || name)}">
+      <input type="radio" name="icon" value="${name}" ${value.icon === name ? "checked" : ""}>
+      <span class="icon-choice__tile">${icon(name)}</span>
+      <small>${esc(REWARD_ICON_LABELS[name] || name)}</small>
+    </label>
+  `).join("");
+  const typeChoices = Object.entries(CONDITION_TYPES).map(([type, condition]) => `
+    <label class="condition-choice">
+      <input type="radio" name="conditionType" value="${type}" ${value.condition.type === type ? "checked" : ""} data-condition-radio>
+      <span>
+        <b>${condition.label}</b>
+        <small>${condition.hint}</small>
+      </span>
+    </label>
+  `).join("");
+  const unit = conditionUnit(value.condition.type);
+
+  openModal(`
+    ${modalHead(reward ? "编辑这份奖励" : "设一个奖励", "SOMETHING TO LOOK FORWARD TO")}
+    <form class="modal-form" data-form="reward" data-id="${reward ? esc(reward.id) : ""}" data-is-new="${reward ? "false" : "true"}">
+      <div class="form-error" hidden></div>
+      <label class="field-label" for="reward-title">想给自己什么？</label>
+      <input id="reward-title" class="text-input" type="text" name="title" maxlength="40" value="${esc(value.title)}" placeholder="比如：一杯喜欢的奶茶" required data-autofocus>
+      <label class="field-label" for="reward-note">留一句给自己的话 <span>可选</span></label>
+      <textarea id="reward-note" class="text-input text-area" name="note" maxlength="120" rows="2" placeholder="达成以后，要怎么享受它？">${esc(value.note)}</textarea>
+
+      <fieldset class="field-group">
+        <legend class="field-label">选一个图案</legend>
+        <div class="icon-grid icon-grid--reward">${iconChoices}</div>
+      </fieldset>
+
+      <fieldset class="field-group">
+        <legend class="field-label">怎么算达成？</legend>
+        <div class="condition-list">${typeChoices}</div>
+      </fieldset>
+
+      <div class="condition-value-row">
+        <div>
+          <span class="field-label">目标数字</span>
+          <p class="field-hint" data-condition-hint>${esc(CONDITION_TYPES[value.condition.type].hint)}</p>
+        </div>
+        <div class="stepper">
+          <button class="stepper__btn" type="button" data-action="step-condition" data-step="-1" aria-label="减少">−</button>
+          <input id="reward-value" class="stepper__input" type="number" name="value" min="1" max="9999" step="1" value="${value.condition.value}" inputmode="numeric" required>
+          <span class="stepper__unit" data-condition-unit>${unit}</span>
+          <button class="stepper__btn" type="button" data-action="step-condition" data-step="1" aria-label="增加">＋</button>
+        </div>
+      </div>
+
+      <div class="form-actions">
+        ${reward ? `<button class="text-btn text-btn--danger" type="button" data-action="delete-reward" data-id="${esc(reward.id)}">删掉它</button>` : "<span></span>"}
+        <div class="form-actions__right">
+          <button class="pixel-btn pixel-btn--ghost" type="button" data-action="close-modal">取消</button>
+          <button class="pixel-btn pixel-btn--gold" type="submit">${reward ? "保存" : "收进小屋"}</button>
+        </div>
+      </div>
+    </form>
+  `, { className: "modal--form" });
+}
+
+function openNameModal() {
+  openModal(`
+    ${modalHead("怎么称呼你？", "YOUR NAME")}
+    <form class="modal-form" data-form="name">
+      <div class="form-error" hidden></div>
+      <label class="field-label" for="profile-name">新称呼</label>
+      <input id="profile-name" class="text-input" type="text" name="name" maxlength="20" value="${esc(store.getState().profile.name)}" placeholder="可以留空" data-autofocus>
+      <p class="field-hint">只是一个称呼，随时可以改。</p>
+      <div class="form-actions">
+        <span></span>
+        <div class="form-actions__right">
+          <button class="pixel-btn pixel-btn--ghost" type="button" data-action="close-modal">取消</button>
+          <button class="pixel-btn pixel-btn--gold" type="submit">记住啦</button>
+        </div>
+      </div>
+    </form>
+  `, { className: "modal--form" });
+}
+
+function openConfirm({ title, body, confirmLabel = "确定", danger = false, onConfirm }) {
+  ui.confirmAction = onConfirm;
+  openModal(`
+    ${modalHead(title, danger ? "CAREFUL" : "PLEASE CONFIRM")}
+    <p class="confirm-copy">${body}</p>
+    <div class="form-actions">
+      <span></span>
+      <div class="form-actions__right">
+        <button class="pixel-btn pixel-btn--ghost" type="button" data-action="close-modal">再想想</button>
+        <button class="pixel-btn ${danger ? "pixel-btn--danger" : "pixel-btn--gold"}" type="button" data-action="confirm-yes" data-autofocus>${esc(confirmLabel)}</button>
+      </div>
+    </div>
+  `, { className: "modal--confirm" });
+}
+
+function runConfirmedAction() {
+  const action = ui.confirmAction;
+  ui.confirmAction = null;
+  closeModal({ instant: true });
+  if (typeof action === "function") {
+    try {
+      action();
+    } catch (error) {
+      console.error(error);
+      toast("这一步没有完成，再试一次吧。", { iconName: "leaf" });
+    }
+  }
+}
+
+function openClaimModal(reward) {
+  openModal(`
+    <div class="claim">
+      <div class="claim__sparkles" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
+      <div class="claim__icon">${icon(reward.icon)}</div>
+      <p class="date-kicker">REWARD UNLOCKED</p>
+      <h2 id="modal-title">${esc(reward.title)}</h2>
+      <p class="claim__note">${esc(reward.note || "这是你送给自己的。")}</p>
+      <div class="claim__quote">去真实地享受它吧。<br>不用觉得不好意思。</div>
+      <button class="pixel-btn pixel-btn--gold pixel-btn--wide" type="button" data-action="close-modal" data-autofocus>收下这份奖励</button>
+    </div>
+  `, { className: "modal--claim" });
+}
+
+function openBreatheModal() {
+  openModal(`
+    <div class="breathe-modal">
+      <div class="modal__head">
+        <div>
+          <p class="date-kicker">TAKE A MOMENT</p>
+          <h2 id="modal-title">把肩膀放下来</h2>
+        </div>
+        <button class="icon-btn" type="button" data-action="close-modal" aria-label="关闭">${icon("close")}</button>
+      </div>
+      <p class="breathe-modal__lead">跟着光圈，慢慢吸气，再慢慢呼气。走神了也没关系，回来就好。</p>
+      <div class="breathe-stage">
+        <span class="breathe-orb" data-breathe-orb></span>
+        <span class="breathe-word" data-breathe-word>准备好了吗</span>
+        <span class="breathe-count" data-breathe-count>24 秒</span>
+      </div>
+      <div class="breathe-actions">
+        <button class="pixel-btn pixel-btn--gold pixel-btn--wide" type="button" data-action="start-breathe" data-autofocus data-breathe-hide>开始</button>
+        <button class="text-btn" type="button" data-action="close-modal" data-breathe-hide>先不用</button>
+        <button class="pixel-btn pixel-btn--gold pixel-btn--wide" type="button" data-action="finish-breathe" hidden>回到小屋</button>
+      </div>
+      <p class="breathe-modal__foot">如果眼睛累了，也可以只是坐着。<br>完成之后，今天会自动算作「来过」。</p>
+    </div>
+  `, { className: "modal--breathe" });
+}
+
+function startBreathe(button) {
+  if (ui.breatheTimer) return;
+  const modal = button.closest(".modal");
+  if (!modal) return;
+  const orb = $("[data-breathe-orb]", modal);
+  const word = $("[data-breathe-word]", modal);
+  const count = $("[data-breathe-count]", modal);
+  const finishButton = $("[data-action='finish-breathe']", modal);
+  $$("[data-breathe-hide]", modal).forEach((el) => el.setAttribute("hidden", ""));
+  modal.classList.add("is-running");
+  const total = 24;
+  const cycle = 12;
+  const started = performance.now();
+  let lastPhase = "";
+  const tick = () => {
+    const elapsed = (performance.now() - started) / 1000;
+    if (elapsed >= total) {
+      completeBreathe(modal, orb, word, count, finishButton);
+      return;
+    }
+    const position = elapsed % cycle;
+    let phase = "吸气";
+    let scale = 1;
+    if (position < 4) {
+      phase = "吸气";
+      scale = 0.82 + (position / 4) * 0.58;
+    } else if (position < 6) {
+      phase = "停一停";
+      scale = 1.4;
+    } else {
+      phase = "呼气";
+      scale = 1.4 - ((position - 6) / 6) * 0.58;
+    }
+    if (word) word.textContent = phase;
+    if (orb) orb.style.transform = `scale(${scale.toFixed(3)})`;
+    if (count) count.textContent = `还剩 ${Math.max(0, Math.ceil(total - elapsed))} 秒`;
+    if (phase !== lastPhase) {
+      lastPhase = phase;
+      audio.play("breathe");
+    }
+  };
+  tick();
+  ui.breatheTimer = window.setInterval(tick, 80);
+}
+
+function completeBreathe(modal, orb, word, count, finishButton) {
+  if (ui.breatheTimer) {
+    window.clearInterval(ui.breatheTimer);
+    ui.breatheTimer = null;
+  }
+  const result = store.markRest();
+  ui.breatheUnlocked = result.unlocked || [];
+  ui.breatheCompleted = true;
+  ui.modalDismissible = false;
+  modal.classList.add("is-done");
+  if (orb) orb.style.transform = "scale(1)";
+  if (word) word.textContent = "慢慢睁开眼";
+  if (count) count.textContent = "今天也算来过啦";
+  const closeButton = $(".modal__head [data-action='close-modal']", modal);
+  if (closeButton) closeButton.remove();
+  if (finishButton) finishButton.removeAttribute("hidden");
+  audio.play("check");
+}
+
+function finishBreathe() {
+  const unlocked = ui.breatheUnlocked;
+  ui.breatheUnlocked = [];
+  ui.breatheCompleted = false;
+  closeModal({ instant: true });
+  say(pickLine(REST_LINES), 5200);
+  audio.play("check");
+  refreshAll({ celebrate: true, keepScroll: true });
+  toast("今天也算来过啦。", { iconName: "leaf", duration: 3200 });
+  notifyUnlocked(unlocked);
+}
+
+function askReset() {
+  openConfirm({
+    title: "重新开始？",
+    body: "这台设备上的所有小事、打卡、奖励和记录都会被清空。这个动作不能撤销。如果只是想换个名字，不用走这一步。",
+    confirmLabel: "全部清空",
+    danger: true,
+    onConfirm: () => {
+      closeModal({ instant: true });
+      store.resetAll();
+      ui.calendar = { year: new Date().getFullYear(), month: new Date().getMonth() + 1 };
+      ui.speech = "";
+      ui.speechUntil = 0;
+      ui.route = "today";
+      history.replaceState(null, "", "#/today");
+      renderShell();
+      window.scrollTo(0, 0);
+      window.setTimeout(openOnboarding, 350);
+    }
+  });
+}
+
+function exportData() {
+  try {
+    const blob = new Blob([store.exportData()], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `微光小屋-备份-${store.dateKey()}.json`;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1200);
+    audio.play("open");
+    toast("备份已经导出。换设备前记得收好它。", { iconName: "download" });
+  } catch {
+    toast("导出没有成功，再试一次吧。", { iconName: "leaf" });
+  }
+}
+
+/* ------------------------------------------------------------------ *
+ * Forms & import
+ * ------------------------------------------------------------------ */
+
+function showFormError(form, message) {
+  const el = $(".form-error", form);
+  if (!el) return;
+  el.textContent = message;
+  el.hidden = false;
+}
+
+async function onDocumentSubmit(event) {
+  const form = event.target.closest("form[data-form]");
+  if (!form) return;
+  event.preventDefault();
+  const type = form.dataset.form;
+  if (type === "onboarding") {
+    const fd = new FormData(form);
+    const name = String(fd.get("name") || "").trim().slice(0, 20);
+    store.completeOnboarding(name);
+    closeModal();
+    say(name ? `${name}，欢迎回家。` : "欢迎回家。", 6000);
+    audio.play("open");
+    refreshAll({ celebrate: true, keepScroll: false });
+    return;
+  }
+
+  if (type === "habit") {
+    const fd = new FormData(form);
+    const name = String(fd.get("name") || "").trim();
+    const iconName = String(fd.get("icon") || "spark");
+    const effort = Number(fd.get("effort"));
+    if (!name) {
+      showFormError(form, "先给它写个名字吧，哪怕只有两个字。");
+      $("#habit-name", form)?.focus();
+      return;
+    }
+    const payload = {
+      name,
+      icon: HABIT_ICONS.includes(iconName) ? iconName : "spark",
+      effort: [1, 2, 3].includes(effort) ? effort : 2
+    };
+    const id = form.dataset.id;
+    if (id) {
+      store.updateHabit(id, payload);
+      toast("改好啦。", { iconName: "pen" });
+    } else {
+      store.addHabit(payload);
+      toast("已经放进今日清单里了。", { iconName: "seed" });
+    }
+    audio.play("check");
+    closeModal();
+    refreshAll({ keepScroll: true });
+    return;
+  }
+
+  if (type === "reward") {
+    const fd = new FormData(form);
+    const title = String(fd.get("title") || "").trim();
+    const note = String(fd.get("note") || "").trim();
+    const iconName = String(fd.get("icon") || "gift");
+    const conditionType = String(fd.get("conditionType") || "days");
+    const conditionValue = Number(fd.get("value"));
+    if (!title) {
+      showFormError(form, "先写下想给自己的东西吧。");
+      $("#reward-title", form)?.focus();
+      return;
+    }
+    if (!CONDITION_TYPES[conditionType]) {
+      showFormError(form, "选一种达成方式。");
+      return;
+    }
+    if (!Number.isFinite(conditionValue) || conditionValue < 1 || conditionValue > 9999) {
+      showFormError(form, "目标数字要在 1 到 9999 之间。");
+      $("#reward-value", form)?.focus();
+      return;
+    }
+    const payload = {
+      title,
+      note,
+      icon: REWARD_ICONS.includes(iconName) ? iconName : "gift",
+      condition: { type: conditionType, value: Math.round(conditionValue) }
+    };
+    const id = form.dataset.id;
+    let unlocked = [];
+    if (id) {
+      const result = store.updateReward(id, payload);
+      unlocked = result?.unlocked || [];
+    } else {
+      const result = store.addReward(payload);
+      unlocked = result.unlocked || [];
+    }
+    if (unlocked.length) {
+      toast(`「${payload.title}」已经达成，可以领取了。`, { iconName: "gift", tone: "gold", duration: 4200 });
+    } else {
+      toast(id ? "奖励改好啦。" : "已经收进小屋。慢慢来。", { iconName: "gift" });
+    }
+    audio.play("check");
+    closeModal();
+    refreshAll({ keepScroll: true });
+    return;
+  }
+
+  if (type === "name") {
+    const fd = new FormData(form);
+    const name = String(fd.get("name") || "").trim();
+    store.setProfileName(name);
+    closeModal();
+    refreshAll({ keepScroll: true });
+    audio.play("click");
+    toast("记住啦。", { iconName: "pen" });
+  }
+}
+
+function stepCondition(button) {
+  const form = button.closest("form");
+  const input = $("#reward-value", form);
+  if (!input) return;
+  const step = Number(button.dataset.step) || 1;
+  const next = clamp((Number(input.value) || 0) + step, 1, 9999);
+  input.value = String(next);
+  audio.play("click");
+}
+
+function onConditionChange(event) {
+  if (!event.target.matches("[data-condition-radio]")) return;
+  const form = event.target.closest("form");
+  if (!form) return;
+  const type = event.target.value;
+  const condition = CONDITION_TYPES[type];
+  if (!condition) return;
+  const unit = $("[data-condition-unit]", form);
+  const hint = $("[data-condition-hint]", form);
+  if (unit) unit.textContent = condition.unit;
+  if (hint) hint.textContent = condition.hint;
+  if (form.dataset.isNew === "true") {
+    const input = $("#reward-value", form);
+    if (input) input.value = String(condition.default);
+  }
+  audio.play("click");
+  updateConditionSummary(form);
+}
+
+function updateConditionSummary(form) {
+  const value = Number($("#reward-value", form)?.value) || 1;
+  const unit = $("[data-condition-unit]", form);
+  if (unit) unit.textContent = conditionUnit(form.querySelector("[data-condition-radio]:checked")?.value || "days");
+}
+
+async function onFileChange(event) {
+  if (event.target.id !== "import-file") return;
+  const file = event.target.files?.[0];
+  event.target.value = "";
+  if (!file) return;
+  if (file.size > 2 * 1024 * 1024) {
+    toast("这个文件太大了，可能不是微光小屋的备份。", { iconName: "leaf" });
+    return;
+  }
+  let text = "";
+  try {
+    text = await file.text();
+    const parsed = JSON.parse(text);
+    const payload = parsed.state || parsed;
+    if (!payload || !Array.isArray(payload.habits) || !Array.isArray(payload.rewards) || typeof payload.logs !== "object") {
+      throw new Error("invalid");
+    }
+  } catch {
+    toast("这个文件不像是微光小屋的备份。", { iconName: "leaf" });
+    return;
+  }
+  openConfirm({
+    title: "导入这份备份？",
+    body: "导入会覆盖这台设备上现在的小屋。建议先导出一次当前备份。",
+    confirmLabel: "导入并覆盖",
+    onConfirm: () => {
+      try {
+        store.importData(text);
+        ui.calendar = { year: new Date().getFullYear(), month: new Date().getMonth() + 1 };
+        ui.speech = "";
+        ui.speechUntil = 0;
+        refreshAll({ keepScroll: false });
+        audio.play("open");
+        toast("小屋已经搬回来啦。", { iconName: "upload" });
+      } catch (error) {
+        toast(error.message || "导入失败了，文件可能不完整。", { iconName: "leaf" });
+      }
+    }
+  });
+}
+
+/* ------------------------------------------------------------------ *
+ * Toast / confetti / tiny effects
+ * ------------------------------------------------------------------ */
+
+function clearToasts() {
+  const root = $("#toast-root");
+  if (root) root.innerHTML = "";
+}
+
+function toast(message, { iconName = "spark", tone = "", duration = 3000 } = {}) {
+  const root = $("#toast-root");
+  if (!root) return;
+  while (root.children.length >= 3) root.firstElementChild.remove();
+  const el = document.createElement("div");
+  el.className = `toast ${tone ? `toast--${tone}` : ""}`;
+  el.innerHTML = `${icon(iconName)}<span>${esc(message)}</span>`;
+  root.appendChild(el);
+  requestAnimationFrame(() => el.classList.add("is-in"));
+  window.setTimeout(() => {
+    el.classList.remove("is-in");
+    window.setTimeout(() => el.remove(), 240);
+  }, duration);
+}
+
+function notifyUnlocked(list) {
+  if (!list || !list.length) return;
+  const names = list.map((reward) => `「${reward.title}」`).join("、");
+  window.setTimeout(() => {
+    toast(`${names} 可以领取了。`, { iconName: "gift", tone: "gold", duration: 4600 });
+  }, 420);
+}
+
+function burstConfetti(count = 28) {
+  const root = $("#fx-root");
+  if (!root) return;
+  const colors = ["#f5c451", "#e8735a", "#f0d9b5", "#9fc79b", "#b7a4d8", "#8bb8d8"];
+  const layer = document.createElement("div");
+  layer.className = "confetti-layer";
+  layer.innerHTML = Array.from({ length: count }, (_, index) => {
+    const left = Math.random() * 100;
+    const delay = Math.random() * 0.35;
+    const duration = 1.1 + Math.random() * 0.8;
+    const size = 4 + Math.floor(Math.random() * 6);
+    const color = colors[index % colors.length];
+    const drift = -40 + Math.random() * 80;
+    return `<i style="left:${left}%;background:${color};width:${size}px;height:${size}px;animation-delay:${delay}s;animation-duration:${duration}s;--drift:${drift}px"></i>`;
+  }).join("");
+  root.appendChild(layer);
+  window.setTimeout(() => layer.remove(), 2600);
+}
+
+function floatPoints(x, y, text, tone = "gold") {
+  const root = $("#fx-root");
+  if (!root) return;
+  const el = document.createElement("span");
+  el.className = `float-points float-points--${tone}`;
+  el.textContent = text;
+  el.style.left = `${x}px`;
+  el.style.top = `${y}px`;
+  root.appendChild(el);
+  window.setTimeout(() => el.remove(), 1000);
+}
+
+/* ------------------------------------------------------------------ *
+ * Global events
+ * ------------------------------------------------------------------ */
+
+function onKeyDown(event) {
+  const root = $("#modal-root");
+  if (!root || root.hidden) return;
+  if (event.key === "Escape" && ui.modalDismissible) {
+    event.preventDefault();
+    closeModal();
+    return;
+  }
+  if (event.key !== "Tab") return;
+  const modal = $(".modal", root);
+  if (!modal) return;
+  const focusables = $$(
+    'a[href], button:not([disabled]):not([hidden]), input:not([disabled]):not([type="hidden"]), textarea:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])',
+    modal
+  ).filter((el) => el.getClientRects().length > 0);
+  if (!focusables.length) {
+    event.preventDefault();
+    modal.focus();
+    return;
+  }
+  const first = focusables[0];
+  const last = focusables[focusables.length - 1];
+  if (event.shiftKey && (document.activeElement === first || document.activeElement === modal)) {
+    event.preventDefault();
+    last.focus();
+  } else if (!event.shiftKey && document.activeElement === last) {
+    event.preventDefault();
+    first.focus();
+  }
+}
+
+function bindGlobalEvents() {
+  document.addEventListener("click", onDocumentClick);
+  document.addEventListener("submit", onDocumentSubmit);
+  document.addEventListener("input", onNoteInput);
+  document.addEventListener("change", onConditionChange);
+  document.addEventListener("change", onFileChange);
+  document.addEventListener("keydown", onKeyDown);
+  document.addEventListener("pointerdown", () => audio.unlock(), { once: true });
+  window.addEventListener("hashchange", () => {
+    const route = parseRoute();
+    if (route !== ui.route) transitionTo(route);
+  });
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) {
+      checkDayChange();
+      if (ui.route === "today" && ui.scene) {
+        ui.scene.setProgress(store.getTodayOverview().doneCount, store.getTodayOverview().total);
+      }
+    }
+  });
+  window.addEventListener("beforeunload", flushNote);
+}
+
+boot();

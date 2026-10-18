@@ -1,0 +1,10 @@
+{
+  "name": "glimmer-nook",
+  "version": "0.1.0",
+  "private": true,
+  "description": "微光小屋 · 一个不催你的像素风打卡小屋",
+  "scripts": {
+    "start": "node scripts/serve.js",
+    "icons": "node scripts/make-icons.js"
+  }
+}

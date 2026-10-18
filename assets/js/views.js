@@ -1,0 +1,622 @@
+import {
+  APP_VERSION,
+  CONDITION_TYPES,
+  EFFORTS,
+  ENERGY,
+  HABIT_ICON_LABELS,
+  HABIT_TIPS,
+  REWARD_ICON_LABELS,
+  TODAY_SUBS
+} from "./data.js";
+import { icon, iconTile } from "./icons.js";
+import {
+  conditionText,
+  dateKicker,
+  dateLabel,
+  esc,
+  greetingFor,
+  monthTitle,
+  pickDaily,
+  shortDate,
+  timeBucket
+} from "./helpers.js";
+import {
+  getHabitCompletionCount,
+  getMonthGrid,
+  getNextReward,
+  rewardProgress
+} from "./store.js";
+
+const NAV_ITEMS = [
+  { route: "today", label: "今日", icon: "lantern" },
+  { route: "habits", label: "小事", icon: "list" },
+  { route: "rewards", label: "奖励", icon: "gift" },
+  { route: "me", label: "小屋", icon: "user" }
+];
+
+export function renderAppBar({ state, stats }) {
+  return `
+    <a class="brand" href="#/today" data-nav aria-label="微光小屋首页">
+      <span class="brand__mark">${icon("lantern")}</span>
+      <span class="brand__text">
+        <strong>微光小屋</strong>
+        <small>GLIMMER NOOK</small>
+      </span>
+    </a>
+    <div class="app-bar__right">
+      <span class="top-points" title="积攒的微光">
+        ${icon("spark")}
+        <b>${stats.totalPoints}</b>
+      </span>
+      <button class="icon-btn sound-btn" type="button" data-action="toggle-sound" aria-label="${state.settings.sound ? "关闭音效" : "打开音效"}" aria-pressed="${state.settings.sound}">
+        ${icon(state.settings.sound ? "sound" : "mute")}
+      </button>
+    </div>
+  `;
+}
+
+export function renderNav({ route, claimableCount = 0 }) {
+  return NAV_ITEMS.map((item) => {
+    const active = item.route === route;
+    const badge = item.route === "rewards" && claimableCount > 0
+      ? `<span class="nav-badge" aria-label="${claimableCount} 份奖励可领取">${claimableCount}</span>`
+      : "";
+    return `
+      <a class="nav-item ${active ? "is-active" : ""}" href="#/${item.route}" data-nav ${active ? 'aria-current="page"' : ""}>
+        <span class="nav-item__icon">${icon(item.icon)}${badge}</span>
+        <span class="nav-item__label">${item.label}</span>
+      </a>
+    `;
+  }).join("");
+}
+
+function todayChip(stats) {
+  if (stats.currentStreak > 0) {
+    return `<span class="chip">${icon("flame")}连续 ${stats.currentStreak} 天</span>`;
+  }
+  return `<span class="chip chip--soft">${icon("spark")}从今天开始</span>`;
+}
+
+function energyOptions(log) {
+  return Object.entries(ENERGY).map(([key, item]) => {
+    const active = log?.energy === key;
+    return `
+      <button class="energy-option ${active ? "is-active" : ""}" type="button" data-action="set-energy" data-energy="${key}" aria-pressed="${active}">
+        <span class="energy-option__icon">${icon(item.icon)}</span>
+        <span>${item.label}</span>
+      </button>
+    `;
+  }).join("");
+}
+
+function renderTaskList(overview) {
+  if (!overview.activeHabits.length) {
+    return `
+      <div class="empty-inline">
+        ${icon("seed", "empty-inline__icon")}
+        <div>
+          <b>今天还没有安排小事</b>
+          <p>从喝一杯水开始也可以。</p>
+        </div>
+        <button class="pixel-btn pixel-btn--small" type="button" data-action="open-habit-modal">加一件</button>
+      </div>
+    `;
+  }
+  return overview.activeHabits.map((habit) => {
+    const done = overview.doneIds.has(habit.id);
+    const effort = EFFORTS[habit.effort] || EFFORTS[2];
+    return `
+      <button class="task-row ${done ? "is-done" : ""}" type="button" data-action="toggle-habit" data-id="${esc(habit.id)}" aria-pressed="${done}" aria-label="${done ? "取消打卡" : "完成"}：${esc(habit.name)}">
+        <span class="task-check">${done ? icon("check") : ""}</span>
+        ${iconTile(habit.icon, "icon-tile--task")}
+        <span class="task-copy">
+          <b>${esc(habit.name)}</b>
+          <small>${effort.label} · +${effort.points} 微光</small>
+        </span>
+        <span class="task-state">${done ? "已点亮" : `+${effort.points}`}</span>
+      </button>
+    `;
+  }).join("");
+}
+
+function renderNextReward(next, hasRewards = false) {
+  if (!next) {
+    return `
+      <div class="panel side-card next-reward">
+        <div class="side-card__head">
+          <span class="eyebrow">${icon(hasRewards ? "heart" : "gift")} ${hasRewards ? "奖励都收下了" : "下一份奖励"}</span>
+        </div>
+        <p class="muted-copy">${hasRewards ? "想再给自己点什么，随时可以写。期待本身也值得留着。" : "还没有给自己准备奖励。想要点什么，就写下来吧。"}</p>
+        <button class="pixel-btn pixel-btn--ghost pixel-btn--small" type="button" data-action="open-reward-modal">${hasRewards ? "再设一个" : "设一个奖励"}</button>
+      </div>
+    `;
+  }
+  const { reward, progress, claimable } = next;
+  return `
+    <div class="panel side-card next-reward ${claimable ? "is-claimable" : ""}">
+      <div class="side-card__head">
+        <span class="eyebrow">${icon(claimable ? "spark" : "gift")} ${claimable ? "已经攒到了" : "下一份奖励"}</span>
+        <button class="text-btn" type="button" data-action="go-rewards">全部奖励 ›</button>
+      </div>
+      <div class="next-reward__main">
+        ${iconTile(reward.icon, "icon-tile--reward")}
+        <div class="next-reward__copy">
+          <b>${esc(reward.title)}</b>
+          <small>${conditionText(reward.condition.type, reward.condition.value)}</small>
+        </div>
+        <span class="next-reward__count">${progress.current}/${progress.value}</span>
+      </div>
+      <div class="pixel-progress" role="progressbar" aria-valuemin="0" aria-valuemax="${progress.value}" aria-valuenow="${progress.current}">
+        <span style="width:${Math.round(progress.pct * 100)}%"></span>
+      </div>
+      <div class="next-reward__foot">
+        <span>${claimable ? "等你收下它。" : `还差 ${progress.remaining} ${CONDITION_TYPES[reward.condition.type].unit}`}</span>
+        <button class="pixel-btn pixel-btn--small ${claimable ? "pixel-btn--gold" : "pixel-btn--ghost"}" type="button" data-action="go-rewards">${claimable ? "去领取" : "看看"}</button>
+      </div>
+    </div>
+  `;
+}
+
+export function renderToday(ctx) {
+  const { state, stats, overview, speech } = ctx;
+  const bucket = timeBucket();
+  const greeting = greetingFor(bucket, state.profile.name);
+  const sub = pickDaily(TODAY_SUBS);
+  const pct = overview.total ? Math.round((overview.doneCount / overview.total) * 100) : 0;
+  const next = getNextReward();
+  const energy = overview.log?.energy || null;
+  const note = overview.log?.note || "";
+  const allDoneCopy = overview.allDone
+    ? "都点亮了。去喝口水，伸个懒腰，今天不用再证明什么。"
+    : overview.doneCount > 0
+      ? `已经亮起 ${overview.doneCount} 个，剩下的不着急。`
+      : "从最小的一件开始。做不动的话，先喘口气也算数。";
+
+  return `
+    <section class="today-page">
+      <header class="today-head">
+        <div class="today-head__copy">
+          <p class="date-kicker">${dateKicker()}</p>
+          <h1>${greeting}</h1>
+          <p class="today-sub">${sub}</p>
+        </div>
+        <div class="today-chips">
+          ${todayChip(stats)}
+          <span class="chip">${icon("spark")}${stats.totalPoints} 微光</span>
+        </div>
+      </header>
+
+      <div class="today-grid">
+          <section class="panel scene-card" aria-label="小灯的小屋">
+            <div class="scene-frame">
+              <canvas id="scene-canvas" class="scene-canvas" width="384" height="216" role="img" aria-label="像素风的小房间，小灯和猫在小屋里等你"></canvas>
+              <div class="scene-top">
+                <span class="scene-pill">${icon("flame")}今日点亮 ${overview.doneCount}/${overview.total}</span>
+                <span class="scene-pill scene-pill--level">${stats.level.current.name}</span>
+              </div>
+              <button class="scene-hit" type="button" data-action="poke-scene" aria-label="摸摸小灯，和小灯打个招呼"></button>
+              <div class="scene-speech" id="scene-speech" aria-live="polite">${esc(speech)}</div>
+              <span class="scene-hint" id="scene-hint">点一下小灯</span>
+            </div>
+            <div class="scene-footer">
+              <div class="energy">
+                <div class="energy__head">
+                  <span class="energy__label">今天感觉怎么样？</span>
+                  <span class="energy__note" id="energy-note">${energy ? ENERGY[energy].note : "选一个，不会影响打卡和奖励。"}</span>
+                </div>
+                <div class="energy__options">${energyOptions(overview.log)}</div>
+              </div>
+              <p class="scene-caption">${dateLabel()} · 小屋的灯一直给你留着</p>
+            </div>
+          </section>
+
+          <section class="panel progress-panel">
+            <div class="progress-panel__top">
+              <div>
+                <span class="eyebrow">${icon("spark")} 今日微光</span>
+                <strong>${overview.doneCount}<span> / ${overview.total || 0} 件</span></strong>
+              </div>
+              <span class="points-badge">+${overview.todayPoints}</span>
+            </div>
+            <div class="pixel-progress pixel-progress--tall" role="progressbar" aria-valuemin="0" aria-valuemax="${overview.total}" aria-valuenow="${overview.doneCount}">
+              <span style="width:${pct}%"></span>
+            </div>
+            <p class="progress-copy">${allDoneCopy}</p>
+          </section>
+
+          <section class="panel breathe-card">
+            <div class="breathe-card__icon">${icon("leaf")}</div>
+            <div class="breathe-card__copy">
+              <b>${overview.log?.rest ? "今天已经来坐过了" : "累了，就停一下"}</b>
+              <p>不用完成任务。跟着呼吸待半分钟，今天也算来过。</p>
+            </div>
+            <button class="pixel-btn pixel-btn--ghost pixel-btn--small" type="button" data-action="open-breathe">${overview.log?.rest ? "再坐一会儿" : "喘口气 · 半分钟"}</button>
+          </section>
+
+          <section class="panel task-panel">
+            <div class="section-head">
+              <div>
+                <span class="eyebrow">TODAY'S LITTLE THINGS</span>
+                <h2>今天的小事</h2>
+              </div>
+              <button class="text-btn text-btn--plus" type="button" data-action="open-habit-modal">${icon("plus")} 加一件</button>
+            </div>
+            <div class="task-list">${renderTaskList(overview)}</div>
+            <p class="task-footnote">同一天每件小事只算一次。点错了，再点一下就能取消。</p>
+          </section>
+
+          ${renderNextReward(next, state.rewards.length > 0)}
+
+          <section class="panel note-panel">
+            <label class="note-label" for="daily-note">给今天留一句话 <span>可选</span></label>
+            <textarea id="daily-note" class="note-input" data-note maxlength="120" rows="2" placeholder="今天……">${esc(note)}</textarea>
+            <div class="note-foot">
+              <span class="muted">只保存在这台设备上</span>
+              <span id="note-count">${note.length}/120</span>
+            </div>
+          </section>
+      </div>
+    </section>
+  `;
+}
+
+function habitCard(habit) {
+  const effort = EFFORTS[habit.effort] || EFFORTS[2];
+  const count = getHabitCompletionCount(habit.id);
+  return `
+    <article class="panel habit-card ${habit.active ? "" : "is-archived"}">
+      <div class="habit-card__top">
+        ${iconTile(habit.icon, "icon-tile--habit")}
+        <div class="habit-card__copy">
+          <h3>${esc(habit.name)}</h3>
+          <p>${effort.label} · 每天一次 · +${effort.points} 微光</p>
+        </div>
+        <button class="icon-btn" type="button" data-action="edit-habit" data-id="${esc(habit.id)}" aria-label="编辑 ${esc(habit.name)}">${icon("pen")}</button>
+      </div>
+      <div class="habit-card__meta">
+        <span>累计完成 <b>${count}</b> 天</span>
+        <span>${habit.active ? "正在今日清单里" : "已经收起来"}</span>
+      </div>
+      <div class="habit-card__foot">
+        <button class="text-btn" type="button" data-action="toggle-archive" data-id="${esc(habit.id)}">${habit.active ? "先收起来" : "重新启用"}</button>
+      </div>
+    </article>
+  `;
+}
+
+export function renderHabits({ state }) {
+  const active = state.habits.filter((habit) => habit.active);
+  const archived = state.habits.filter((habit) => !habit.active);
+  const tip = pickDaily(HABIT_TIPS);
+  return `
+    <section class="sub-page habits-page">
+      <header class="page-head">
+        <div>
+          <p class="date-kicker">YOUR LITTLE THINGS</p>
+          <h1>我的小事</h1>
+          <p class="page-sub">目标不用大。小到几乎不可能失败，才算好目标。</p>
+        </div>
+        <button class="pixel-btn pixel-btn--gold" type="button" data-action="open-habit-modal">${icon("plus")} 加一件小事</button>
+      </header>
+
+      ${active.length ? `
+        <div class="habit-grid">${active.map(habitCard).join("")}</div>
+      ` : `
+        <div class="panel empty-state">
+          <span class="empty-state__icon">${icon("seed")}</span>
+          <h2>先放一件小事进来吧</h2>
+          <p>「喝一杯水」「站起来伸个懒腰」「今天吃一顿饭」都可以。</p>
+          <button class="pixel-btn pixel-btn--gold" type="button" data-action="open-habit-modal">${icon("plus")} 写下第一件小事</button>
+        </div>
+      `}
+
+      ${archived.length ? `
+        <section class="archived-block">
+          <div class="section-head section-head--plain">
+            <div>
+              <span class="eyebrow">RESTING</span>
+              <h2>先收起来的（${archived.length}）</h2>
+            </div>
+          </div>
+          <div class="habit-grid">${archived.map(habitCard).join("")}</div>
+        </section>
+      ` : ""}
+
+      <aside class="tip-card">
+        <span class="tip-card__icon">${icon("spark")}</span>
+        <div>
+          <b>今天的小提示</b>
+          <p>${tip}</p>
+        </div>
+      </aside>
+
+      <footer class="page-quote">${icon("lantern")}<span>小屋今天也开着。你随时可以回来。</span></footer>
+    </section>
+  `;
+}
+
+function rewardCard(reward, stats) {
+  const progress = rewardProgress(reward, stats);
+  const claimed = Boolean(reward.claimedAt);
+  const claimable = Boolean(reward.unlockedAt) && !claimed;
+  const condition = CONDITION_TYPES[reward.condition.type];
+  let stateLabel = "正在积攒";
+  if (claimed) stateLabel = "已经收到";
+  else if (claimable) stateLabel = "可以领取";
+  return `
+    <article class="panel reward-card ${claimed ? "is-claimed" : ""} ${claimable ? "is-claimable" : ""}">
+      <div class="reward-card__top">
+        ${iconTile(reward.icon, "icon-tile--reward")}
+        <div class="reward-card__copy">
+          <div class="reward-card__titleline">
+            <h3>${esc(reward.title)}</h3>
+            <span class="reward-state">${stateLabel}</span>
+          </div>
+          ${reward.note ? `<p>${esc(reward.note)}</p>` : `<p>${esc(condition.hint)}</p>`}
+        </div>
+      </div>
+      <div class="reward-card__condition">
+        <span>${condition.label} ${reward.condition.value} ${condition.unit}</span>
+        <span>${progress.current} / ${progress.value}</span>
+      </div>
+      <div class="pixel-progress" role="progressbar" aria-valuemin="0" aria-valuemax="${progress.value}" aria-valuenow="${progress.current}">
+        <span style="width:${Math.round(progress.pct * 100)}%"></span>
+      </div>
+      <div class="reward-card__foot">
+        <span class="muted">
+          ${claimed
+            ? `收下于 ${shortDate(reward.claimedAt)}`
+            : claimable
+              ? "达成了。去真实地享受它吧。"
+              : `还差 ${progress.remaining} ${condition.unit}`}
+        </span>
+        <div class="reward-card__actions">
+          ${!claimed ? `<button class="text-btn" type="button" data-action="edit-reward" data-id="${esc(reward.id)}">${icon("pen")} 编辑</button>` : ""}
+          ${claimable ? `<button class="pixel-btn pixel-btn--gold pixel-btn--small" type="button" data-action="claim-reward" data-id="${esc(reward.id)}">${icon("gift")} 领取</button>` : ""}
+        </div>
+      </div>
+    </article>
+  `;
+}
+
+export function renderRewards({ state, stats }) {
+  const claimable = state.rewards.filter((reward) => reward.unlockedAt && !reward.claimedAt);
+  const locked = state.rewards
+    .filter((reward) => !reward.unlockedAt && !reward.claimedAt)
+    .map((reward) => ({ reward, progress: rewardProgress(reward, stats) }))
+    .sort((a, b) => b.progress.pct - a.progress.pct)
+    .map((item) => item.reward);
+  const claimed = state.rewards.filter((reward) => reward.claimedAt);
+
+  return `
+    <section class="sub-page rewards-page">
+      <header class="page-head">
+        <div>
+          <p class="date-kicker">THINGS WORTH WAITING FOR</p>
+          <h1>给自己的奖励</h1>
+          <p class="page-sub">不是完成任务后的工资，是你愿意好好对待自己的证据。</p>
+        </div>
+        <button class="pixel-btn pixel-btn--gold" type="button" data-action="open-reward-modal">${icon("plus")} 设一个奖励</button>
+      </header>
+
+      ${state.rewards.length ? `
+        <div class="reward-summary">
+          <span>${icon("gift")} 已经收到 <b>${claimed.length}</b> 份</span>
+          <span>${claimable.length ? `${claimable.length} 份正在发光` : "慢慢攒，不着急"}</span>
+        </div>
+      ` : ""}
+
+      ${claimable.length ? `
+        <section class="reward-section">
+          <div class="section-head section-head--plain">
+            <div>
+              <span class="eyebrow">READY TO OPEN</span>
+              <h2>可以领取了</h2>
+            </div>
+          </div>
+          <div class="reward-grid">${claimable.map((reward) => rewardCard(reward, stats)).join("")}</div>
+        </section>
+      ` : ""}
+
+      ${locked.length ? `
+        <section class="reward-section">
+          <div class="section-head section-head--plain">
+            <div>
+              <span class="eyebrow">SAVING UP</span>
+              <h2>正在积攒</h2>
+            </div>
+          </div>
+          <div class="reward-grid">${locked.map((reward) => rewardCard(reward, stats)).join("")}</div>
+        </section>
+      ` : ""}
+
+      ${claimed.length ? `
+        <section class="reward-section">
+          <div class="section-head section-head--plain">
+            <div>
+              <span class="eyebrow">ALREADY YOURS</span>
+              <h2>已经收到</h2>
+            </div>
+          </div>
+          <div class="reward-grid reward-grid--claimed">${claimed.map((reward) => rewardCard(reward, stats)).join("")}</div>
+        </section>
+      ` : ""}
+
+      ${!state.rewards.length ? `
+        <div class="panel empty-state">
+          <span class="empty-state__icon">${icon("gift")}</span>
+          <h2>还没有给自己的奖励</h2>
+          <p>一杯奶茶、一集喜欢的剧、买一本想看的书，都可以。写下来，让期待有个形状。</p>
+          <button class="pixel-btn pixel-btn--gold" type="button" data-action="open-reward-modal">${icon("plus")} 写第一份奖励</button>
+        </div>
+      ` : ""}
+
+      <aside class="tip-card">
+        <span class="tip-card__icon">${icon("heart")}</span>
+        <div>
+          <b>领取以后，记得真的去享受它</b>
+          <p>不用觉得「这点小事也值得奖励」。你愿意继续出现，本身就很值得。</p>
+        </div>
+      </aside>
+
+      <footer class="page-quote">${icon("lantern")}<span>小屋今天也开着。你随时可以回来。</span></footer>
+    </section>
+  `;
+}
+
+function calendarCells(cells) {
+  return cells.map((cell) => {
+    if (!cell) return `<span class="calendar-cell is-empty" aria-hidden="true"></span>`;
+    const level = cell.taskCount >= 3 ? 3 : cell.taskCount === 2 ? 2 : cell.taskCount === 1 ? 1 : 0;
+    const classes = [
+      "calendar-cell",
+      cell.shown ? "is-shown" : "",
+      level ? `level-${level}` : "",
+      cell.rest && !cell.taskCount ? "is-rest" : "",
+      cell.isToday ? "is-today" : "",
+      cell.isFuture ? "is-future" : ""
+    ].filter(Boolean).join(" ");
+    const label = cell.shown
+      ? `${cell.key}，完成 ${cell.taskCount} 件${cell.rest ? "，来喘过气" : ""}`
+      : `${cell.key}，没有记录`;
+    return `
+      <span class="${classes}" aria-label="${label}" title="${label}">
+        <span class="calendar-day">${cell.day}</span>
+        ${cell.shown ? `<i class="calendar-dot"></i>` : ""}
+      </span>
+    `;
+  }).join("");
+}
+
+export function renderMe({ state, stats, calendar }) {
+  const grid = getMonthGrid(calendar.year, calendar.month);
+  const monthShown = grid.filter((cell) => cell && cell.shown).length;
+  const level = stats.level;
+  const now = new Date();
+  const isCurrentMonth = calendar.year === now.getFullYear() && calendar.month === now.getMonth() + 1;
+  const name = state.profile.name || "小旅人";
+  const nextLevelText = level.next
+    ? `再攒 ${level.toNext} 微光，变成「${level.next.name}」。`
+    : "你已经是一小片星河了。";
+
+  return `
+    <section class="sub-page me-page">
+      <header class="page-head page-head--profile">
+        <div>
+          <p class="date-kicker">YOUR LITTLE NOOK</p>
+          <h1>我的小屋</h1>
+          <p class="page-sub">这里没有排名，也没有别人。只有你和一点点累积起来的光。</p>
+        </div>
+      </header>
+
+      <div class="me-grid">
+        <section class="panel profile-card">
+          <div class="portrait-frame">
+            <canvas id="portrait-canvas" class="portrait-canvas" width="96" height="96" role="img" aria-label="小灯的像素头像"></canvas>
+            <span class="portrait-status"></span>
+          </div>
+          <div class="profile-card__copy">
+            <span class="eyebrow">THE KEEPER OF THIS NOOK</span>
+            <div class="profile-name-row">
+              <h2>${esc(name)}</h2>
+              <button class="icon-btn" type="button" data-action="edit-name" aria-label="修改称呼">${icon("pen")}</button>
+            </div>
+            <p>${stats.totalDays ? `你已经在小屋出现过 ${stats.totalDays} 天。` : "今天，是你第一次推开小屋的门。"}</p>
+            <div class="level-line">
+              <span>${icon("spark")} ${level.current.name}</span>
+              <span>${stats.totalPoints} 微光</span>
+            </div>
+            <div class="pixel-progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(level.progress * 100)}">
+              <span style="width:${Math.round(level.progress * 100)}%"></span>
+            </div>
+            <p class="level-note">${level.current.note} ${nextLevelText}</p>
+          </div>
+        </section>
+
+        <section class="panel stats-card">
+          <span class="eyebrow">LITTLE NUMBERS</span>
+          <div class="stat-grid">
+            <div class="stat"><strong>${stats.totalDays}</strong><span>出现天数</span></div>
+            <div class="stat"><strong>${stats.totalTasks}</strong><span>完成次数</span></div>
+            <div class="stat"><strong>${stats.currentStreak}</strong><span>当前连续</span></div>
+            <div class="stat"><strong>${stats.longestStreak}</strong><span>最长连续</span></div>
+          </div>
+          <p class="stat-note">数字只是记录，不是成绩单。它们不会因为你休息就消失。</p>
+        </section>
+      </div>
+
+      <section class="panel calendar-card">
+        <div class="calendar-head">
+          <div>
+            <span class="eyebrow">FOOTPRINTS</span>
+            <h2>${monthTitle(calendar.year, calendar.month)}</h2>
+          </div>
+          <div class="calendar-nav">
+            <button class="icon-btn" type="button" data-action="cal-prev" aria-label="上个月">${icon("left")}</button>
+            <button class="icon-btn" type="button" data-action="cal-next" aria-label="下个月" ${isCurrentMonth ? "disabled" : ""}>${icon("right")}</button>
+          </div>
+        </div>
+        <div class="weekday-row" aria-hidden="true">
+          <span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span>
+        </div>
+        <div class="calendar-grid">${calendarCells(grid)}</div>
+        <div class="calendar-legend">
+          <span><i class="legend-dot level-1"></i> 1 件</span>
+          <span><i class="legend-dot level-2"></i> 2 件</span>
+          <span><i class="legend-dot level-3"></i> 3 件以上</span>
+          <span><i class="legend-dot is-rest"></i> 来喘口气</span>
+          <span class="calendar-month-sum">这个月出现了 <b>${monthShown}</b> 天</span>
+        </div>
+      </section>
+
+      <div class="me-columns">
+        <section class="panel settings-card">
+          <span class="eyebrow">SETTINGS</span>
+          <h2>小屋设置</h2>
+          <div class="setting-list">
+            <button class="setting-row" type="button" role="switch" aria-checked="${state.settings.sound}" data-action="toggle-setting" data-key="sound">
+              <span class="setting-row__icon">${icon("sound")}</span>
+              <span class="setting-row__copy"><b>音效</b><small>按钮和打卡时的小声音</small></span>
+              <span class="switch ${state.settings.sound ? "is-on" : ""}" aria-hidden="true"><i></i></span>
+            </button>
+            <button class="setting-row" type="button" role="switch" aria-checked="${state.settings.motion}" data-action="toggle-setting" data-key="motion">
+              <span class="setting-row__icon">${icon("spark")}</span>
+              <span class="setting-row__copy"><b>小屋动画</b><small>关闭后，小灯会安静地待着</small></span>
+              <span class="switch ${state.settings.motion ? "is-on" : ""}" aria-hidden="true"><i></i></span>
+            </button>
+            <button class="setting-row" type="button" data-action="export-data">
+              <span class="setting-row__icon">${icon("download")}</span>
+              <span class="setting-row__copy"><b>导出备份</b><small>把全部记录存成一个文件</small></span>
+              <span class="setting-arrow">${icon("right")}</span>
+            </button>
+            <button class="setting-row" type="button" data-action="import-data">
+              <span class="setting-row__icon">${icon("upload")}</span>
+              <span class="setting-row__copy"><b>导入备份</b><small>从另一台设备搬回小屋</small></span>
+              <span class="setting-arrow">${icon("right")}</span>
+            </button>
+            <button class="setting-row setting-row--danger" type="button" data-action="reset-data">
+              <span class="setting-row__icon">${icon("trash")}</span>
+              <span class="setting-row__copy"><b>重新开始</b><small>清空这台设备上的全部记录</small></span>
+              <span class="setting-arrow">${icon("right")}</span>
+            </button>
+          </div>
+          <input id="import-file" type="file" accept="application/json,.json" hidden>
+        </section>
+
+        <section class="panel about-card">
+          <span class="eyebrow">ABOUT THIS NOOK</span>
+          <h2>关于微光小屋</h2>
+          <p>一个不催你的打卡小屋。记录出现过的一点点，给想对自己好的心情留个位置。</p>
+          <p class="about-small">所有数据只保存在这台设备的浏览器里。不上传，不排名，不需要登录。换设备前记得导出备份。</p>
+          <div class="about-kind">
+            ${icon("heart")}
+            <p>如果最近真的很累，别一个人扛。找一个信任的人说说，或联系专业的心理支持。你不需要先变得有用，才值得被帮助。</p>
+          </div>
+          <p class="about-version">GLIMMER NOOK v${APP_VERSION} · 像素字体：Fusion Pixel Font (OFL)</p>
+        </section>
+      </div>
+
+      <footer class="page-quote">${icon("lantern")}<span>小屋今天也开着。你随时可以回来。</span></footer>
+    </section>
+  `;
+}
