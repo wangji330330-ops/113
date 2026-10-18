@@ -1,9 +1,21 @@
-export const APP_VERSION = "0.3.1";
-export const APP_BUILD = 4;
+export const APP_VERSION = "0.4.0";
+export const APP_BUILD = 5;
 export const APP_RELEASED_AT = "2026-10-18";
 export const STORE_KEY = "glimmer-nook:v1";
 
 export const CHANGELOG = [
+  {
+    version: "0.4.0",
+    date: "2026-10-19",
+    title: "小灯记得，和免费的离线陪伴",
+    items: [
+      "新增「小灯记得」：在日记里写下怕冷、喜欢靠窗、最近很累这些小事，小灯会记住，也可以随时改或忘掉。",
+      "聊天页默认提供免费的离线小灯：不联网、不调用模型，会参考你写下的记忆回应，也会接住一些常见情绪。",
+      "离线小灯会明确标注自己不是大模型；遇到危机内容会建议联系信任的人、急救或心理援助热线。",
+      "连接 DeepSeek API 后，最近的记忆会作为聊天上下文一起发送；离线聊天不会上传。",
+      "记忆和日记一起保存在本机，随导出备份保存。"
+    ]
+  },
   {
     version: "0.3.1",
     date: "2026-10-19",
@@ -50,6 +62,29 @@ export const CHANGELOG = [
     ]
   }
 ];
+
+export const MEMORY_KINDS = {
+  like: {
+    label: "喜欢",
+    icon: "heart",
+    hint: "喜欢的东西、让你舒服的小事"
+  },
+  care: {
+    label: "在意",
+    icon: "spark",
+    hint: "你放在心上的事"
+  },
+  recent: {
+    label: "最近",
+    icon: "leaf",
+    hint: "最近的生活、状态、变化"
+  },
+  boundary: {
+    label: "不太喜欢",
+    icon: "moon",
+    hint: "不喜欢、害怕、想避开的"
+  }
+};
 
 export const EFFORTS = {
   1: { label: "轻轻的", short: "轻", points: 1, dots: 1, hint: "几乎不费力，比如喝口水" },

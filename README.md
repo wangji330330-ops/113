@@ -7,8 +7,9 @@
 ![微光小屋桌面版预览](docs/preview-desktop.png)
 
 <p align="center">
-  <img src="docs/preview-diary.png" alt="日记本预览" width="49%">
-  <img src="docs/preview-chat.png" alt="和小灯聊天预览" width="49%">
+  <img src="docs/preview-diary.png" alt="日记本预览" width="32%">
+  <img src="docs/preview-memory.png" alt="小灯记得预览" width="32%">
+  <img src="docs/preview-chat.png" alt="离线小灯预览" width="32%">
 </p>
 
 <p align="center">
@@ -16,8 +17,8 @@
 </p>
 
 - 网页版：<https://wangji330330-ops.github.io/113/>
-- Android：[下载调试 APK v0.3.1](https://github.com/wangji330330-ops/113/releases/download/v0.3.1/glimmer-nook-v0.3.1-debug.apk)
-- [GitHub Release v0.3.1](https://github.com/wangji330330-ops/113/releases/tag/v0.3.1)
+- Android：[下载调试 APK v0.4.0](https://github.com/wangji330330-ops/113/releases/download/v0.4.0/glimmer-nook-v0.4.0-debug.apk)
+- [GitHub Release v0.4.0](https://github.com/wangji330330-ops/113/releases/tag/v0.4.0)
 - [更新日志](CHANGELOG.md)
 
 ## 现在有什么
@@ -27,7 +28,9 @@
   - 家里：客厅、房间、厨房、卫生间
   - 外面：学校、图书馆、电影院、郊游、超市、球场、江边、爬山、兜风
 - **日记本**：按日期归档每天的文字。「给今天留一句话」不再限制字数，空一行自动分段；旧日记可以单独打开编辑。日记只保存在本机。
-- **和小灯聊聊**：可选接入 DeepSeek V4.1 Flash。需要你自己的 DeepSeek API Key，直接在设备上请求官方接口，不经过第三方代理。没有 Key 时，其他功能完全不受影响。
+- **小灯记得**：在「日记 → 小灯记得」里写下怕冷、喜欢靠窗、最近很累、不喜欢被催这些小事；可以分类、编辑、忘掉。它只保存在本机，会随导出备份保存。
+- **免费离线小灯**：聊天页默认就是离线陪伴，不联网、不调用模型、不花钱。它会参考你写下的记忆回应，会接住常见情绪；它不是大模型，不会假装知道很多知识。
+- **和小灯聊聊（可选联网）**：想聊更多时，可以接入 DeepSeek V4.1 Flash。需要你自己的 DeepSeek API Key，直接在设备上请求官方接口，不经过第三方代理。最近的记忆会作为聊天上下文一起发送。
 - **DeepSeek 网页版入口**：不想用 API 也可以免费登录网页版。Android 在应用内浏览器打开，网页版在新标签打开；登录和对话由 DeepSeek 页面完成，不会自动写进小屋。
 - **人物换装**：头、面、身、腿、鞋分开搭配，多种选择；在「小屋 → 人物形象」或今日页的「换个样子」进入。
 - **今日打卡**：三件预置小事，可自由增删改；点一下完成任务，点错再点一下即可取消。
@@ -37,16 +40,27 @@
 - **成长与回顾**：微光等级、出现天数、完成次数、最长连续、月历足迹。
 - **版本与更新**：设置内检查更新、查看更新日志；网页版在线更新，Android 跳转到新版 APK。
 - **像素演出与音效**：小灯呼吸、眨眼、被摸头、打卡跳跃，场景待机动画，WebAudio 8-bit 音效。
-- **本地优先**：打卡、日记、人物搭配和设置保存在浏览器 `localStorage`，不登录、不上传；支持导出 / 导入备份。
-- **PWA / 离线**：可添加到主屏幕，Service Worker 缓存应用与像素字体；除了联网聊天，其余功能可离线使用。
+- **本地优先**：打卡、日记、记忆、人物搭配和设置保存在浏览器 `localStorage`，不登录、不上传；支持导出 / 导入备份。
+- **PWA / 离线**：可添加到主屏幕，Service Worker 缓存应用与像素字体；除了需要联网的 API 聊天和网页版，其余功能可离线使用。
 
 底部导航现在有五个位置：**今日 / 小事 / 日记 / 奖励 / 小屋**。原来的场景页还在，从今日页的「去走走」或小屋设置进入。
+
+## 小灯记得 & 离线陪伴
+
+- 入口：**日记 → 小灯记得**；今日页的「小灯记得」和「小屋设置 → 小灯记得」也会到那里。
+- 写下一件小事，选「喜欢 / 在意 / 最近 / 不太喜欢」，就收进本机的小本子。
+- 聊天页默认是离线小灯：
+  - 不联网、不调用模型、不花 API 的钱。
+  - 会参考你写下的记忆；你可以点聊天里自己那句话下面的「记住」，把一句话收进小本子。
+  - 会明确标注「不是大模型」，不会编造知识；遇到危机内容会建议联系信任的人、120/110 或心理援助热线 12356。
+  - 离线聊天不会上传任何内容。
+- 连接 DeepSeek 后，最近的记忆会作为聊天上下文发送；仍然可以随时在聊天设置里切回离线小灯。
 
 ## 联网聊天怎么用
 
 1. 在 [DeepSeek 开放平台](https://platform.deepseek.com/api_keys) 创建一个 API Key。
-2. 打开「日记 → 和小灯聊聊 → 连接 DeepSeek」，粘贴 Key，保存。
-3. 回到聊天，直接说话。默认模型是 `deepseek-flash`（DeepSeek V4.1 Flash 的 API 模型名）。
+2. 打开「日记 → 聊聊天 → 连接 DeepSeek」（离线小灯上方的「连接 DeepSeek」也可以），粘贴 Key，保存。
+3. 保存后会自动切到联网小灯。默认模型是 `deepseek-flash`（DeepSeek V4.1 Flash 的 API 模型名）。
 
 说明：
 
@@ -54,7 +68,7 @@
 - Key 以明文保存在当前设备的 `localStorage` 中，**不会进入导出备份**；聊天记录也只保存在本机。请不要在公用设备上保存 Key。
 - 聊天内容会发送给 DeepSeek，并按 DeepSeek 的 API 计费；需要账户里有余额。
 - 不要把密码、身份证号、住址等敏感信息发进聊天。
-- 没有联网或没有 Key 时，小灯不会假装回答；日记本、场景、打卡、奖励都可以照常离线使用。
+- 没有 Key 或没有联网时，默认是离线小灯；它不会假装自己是 DeepSeek。日记本、场景、打卡、奖励都可以照常离线使用。
 
 ## DeepSeek 网页版（免费）
 
@@ -92,10 +106,10 @@ npm start
 
 ## 下载 Android APK
 
-- Release 下载：[glimmer-nook-v0.3.1-debug.apk](https://github.com/wangji330330-ops/113/releases/download/v0.3.1/glimmer-nook-v0.3.1-debug.apk)（约 2.2 MB）
-- 仓库镜像：[download/glimmer-nook-v0.3.1-debug.apk](download/glimmer-nook-v0.3.1-debug.apk)
-- 校验：[SHA256](download/glimmer-nook-v0.3.1-debug.apk.sha256)
-- 支持 Android 7.0（API 24）及以上，版本 0.3.1（versionCode 4）。
+- Release 下载：[glimmer-nook-v0.4.0-debug.apk](https://github.com/wangji330330-ops/113/releases/download/v0.4.0/glimmer-nook-v0.4.0-debug.apk)（约 2.3 MB）
+- 仓库镜像：[download/glimmer-nook-v0.4.0-debug.apk](download/glimmer-nook-v0.4.0-debug.apk)
+- 校验：[SHA256](download/glimmer-nook-v0.4.0-debug.apk.sha256)
+- 支持 Android 7.0（API 24）及以上，版本 0.4.0（versionCode 5）。
 
 安装步骤：
 
@@ -150,6 +164,7 @@ assets/
   js/place-data.js          13 个场景的文案与可点击物件
   js/places.js              场景绘制、粒子与场景控制器
   js/chat.js                DeepSeek 直连、历史与系统提示
+  js/companion.js           免费离线小灯与记忆回应
   js/updater.js             版本检查、Service Worker 更新、外部跳转
   js/icons.js               12×12 像素图标集
   js/audio.js               WebAudio 音效合成
@@ -165,7 +180,7 @@ download/                   APK 与校验文件
 
 ## 数据说明
 
-- 存储键：`glimmer-nook:v1`（打卡、日记、人物搭配）
+- 存储键：`glimmer-nook:v1`（打卡、日记、记忆、人物搭配）
 - 聊天设置：`glimmer-nook:deepseek`（只在本机；含 API Key）
 - 聊天记录：`glimmer-nook:chat`（只在本机；最多保留最近 80 条）
 - 每个自然日每个习惯只记一次；取消打卡会同步修正统计。
@@ -188,4 +203,5 @@ download/                   APK 与校验文件
 ## 字体
 
 [Fusion Pixel Font / 缝合像素字体](https://github.com/TakWolf/fusion-pixel-font)，SIL Open Font License 1.1。许可证见 `assets/fonts/fusion-pixel/LICENSE-OFL.txt`。
+
 

@@ -1,14 +1,15 @@
 {
-  "version": "0.3.1",
-  "build": 4,
+  "version": "0.4.0",
+  "build": 5,
   "releasedAt": "2026-10-19",
-  "title": "DeepSeek 网页版入口",
+  "title": "小灯记得，和免费的离线陪伴",
   "notes": [
-    "新增 DeepSeek 网页版入口：Android 在应用内浏览器打开，网页版在新标签打开。",
-    "网页版免费登录使用；登录和对话在 DeepSeek 页面完成，不会自动写进小屋。",
-    "想自动保存对话、写进日记，仍然需要 API Key。"
+    "新增「小灯记得」：把怕冷、喜欢靠窗、最近很累这些小事留在本机，小灯会记得。",
+    "聊天页默认提供免费的离线小灯：不联网、不调用模型，会参考记忆回应。",
+    "离线小灯会明确标注不是大模型；遇到危机内容会给出求助信息。",
+    "连接 DeepSeek API 时，最近的记忆会作为聊天上下文发送；离线聊天不会上传。"
   ],
   "webUrl": "https://wangji330330-ops.github.io/113/",
-  "apkUrl": "https://github.com/wangji330330-ops/113/releases/download/v0.3.1/glimmer-nook-v0.3.1-debug.apk",
-  "releaseUrl": "https://github.com/wangji330330-ops/113/releases/tag/v0.3.1"
+  "apkUrl": "https://github.com/wangji330330-ops/113/releases/download/v0.4.0/glimmer-nook-v0.4.0-debug.apk",
+  "releaseUrl": "https://github.com/wangji330330-ops/113/releases/tag/v0.4.0"
 }

@@ -4,6 +4,7 @@ import {
   STARTER_REWARDS,
   EFFORTS,
   ENERGY,
+  MEMORY_KINDS,
   CONDITION_TYPES,
   levelFor
 } from "./data.js";
@@ -96,6 +97,19 @@ function makeReward(seed = {}) {
   };
 }
 
+function makeMemory(raw = {}) {
+  const text = clampText(raw.text, 80).replace(/[。！？?!，,；;]+$/g, "").trim();
+  if (!text) return null;
+  return {
+    id: safeId(raw.id, "memory"),
+    text,
+    kind: MEMORY_KINDS[raw.kind] ? raw.kind : "care",
+    source: ["manual", "chat", "diary", "quiet"].includes(raw.source) ? raw.source : "manual",
+    createdAt: raw.createdAt || nowIso(),
+    updatedAt: raw.updatedAt || nowIso()
+  };
+}
+
 function makeLogEntry(raw = {}) {
   const energy = Object.prototype.hasOwnProperty.call(ENERGY, raw.energy) ? raw.energy : null;
   const seen = new Set();
@@ -135,6 +149,7 @@ function createInitialState() {
     },
     habits: STARTER_HABITS.map((habit) => makeHabit({ ...habit, createdAt: now })),
     rewards: STARTER_REWARDS.map((reward) => makeReward({ ...reward, createdAt: now })),
+    memories: [],
     logs: {},
     meta: {
       lastOpenAt: now,
@@ -166,6 +181,9 @@ function sanitizeState(raw, { strict = false } = {}) {
       logs[key] = makeLogEntry(entry && typeof entry === "object" ? entry : {});
     }
   }
+  const memories = Array.isArray(raw.memories)
+    ? raw.memories.filter((memory) => memory && typeof memory === "object").map(makeMemory).filter(Boolean).slice(-120)
+    : [];
   return {
     version: 1,
     profile: {
@@ -180,6 +198,7 @@ function sanitizeState(raw, { strict = false } = {}) {
     },
     habits,
     rewards,
+    memories,
     logs,
     meta: {
       lastOpenAt: nowIso(),
@@ -307,6 +326,54 @@ export function getDiaryEntries() {
       energy: log.energy || null
     }))
     .sort((a, b) => b.date.localeCompare(a.date));
+}
+
+export function getMemories() {
+  return state.memories
+    .map((memory) => ({ ...memory }))
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+}
+
+export function addMemory(text, kind = "care", source = "manual") {
+  const memory = makeMemory({ text, kind, source });
+  if (!memory) return null;
+  const existing = state.memories.find((item) => item.text === memory.text);
+  if (existing) return { ...existing, duplicate: true };
+  state.memories.push(memory);
+  if (state.memories.length > 120) state.memories.shift();
+  persist();
+  return memory;
+}
+
+export function updateMemory(id, patch = {}) {
+  const memory = state.memories.find((item) => item.id === id);
+  if (!memory) return null;
+  if (Object.prototype.hasOwnProperty.call(patch, "text")) {
+    const text = clampText(patch.text, 80).replace(/[。！？?!，,；;]+$/g, "").trim();
+    if (!text) return null;
+    memory.text = text;
+  }
+  if (MEMORY_KINDS[patch.kind]) memory.kind = patch.kind;
+  memory.updatedAt = nowIso();
+  persist();
+  return { ...memory };
+}
+
+export function removeMemory(id) {
+  const before = state.memories.length;
+  state.memories = state.memories.filter((memory) => memory.id !== id);
+  if (state.memories.length !== before) {
+    persist();
+    return true;
+  }
+  return false;
+}
+
+export function getMemoryPrompt(limit = 12, maxChars = 900) {
+  const list = getMemories()
+    .slice(0, limit)
+    .map((memory) => `${MEMORY_KINDS[memory.kind]?.label || "记得"}：${memory.text}`);
+  return list.join("；").slice(0, maxChars);
 }
 
 function activeDayKeys() {

@@ -10,6 +10,7 @@ import {
   HABIT_ICON_LABELS,
   HABIT_ICONS,
   IDLE_LINES,
+  MEMORY_KINDS,
   POKE_LINES,
   REST_LINES,
   REWARD_ICON_LABELS,
@@ -33,6 +34,7 @@ import {
   saveChatSettings,
   sendChatMessage
 } from "./chat.js";
+import { generateLocalReply } from "./companion.js";
 import {
   LOOK_PARTS,
   normalizeLook,
@@ -77,6 +79,8 @@ const ui = {
   placeSpeech: "",
   placeSpeechUntil: 0,
   diaryTab: "journal",
+  chatMode: null,
+  chatFocus: false,
   chatSending: false,
   chatError: "",
   previewToken: 0,
@@ -192,7 +196,14 @@ function renderPage({ focusPage = false, animatePage = true } = {}) {
   let html = "";
   if (ui.route === "today") {
     const overview = store.getTodayOverview();
-    html = renderToday({ state, stats, overview, speech: currentSpeech(), homePlace: getHomePlace() });
+    html = renderToday({
+      state,
+      stats,
+      overview,
+      speech: currentSpeech(),
+      homePlace: getHomePlace(),
+      memoryCount: store.getMemories().length
+    });
   } else if (ui.route === "places") {
     html = renderPlaces({
       state,
@@ -203,17 +214,20 @@ function renderPage({ focusPage = false, animatePage = true } = {}) {
     html = renderHabits({ state, stats });
   } else if (ui.route === "diary") {
     const entries = store.getDiaryEntries();
+    if (!hasChatKey()) ui.chatMode = "local";
+    else if (!ui.chatMode) ui.chatMode = "api";
     html = renderDiary({
       state,
       entries,
       todayNote: store.getNoteForDate(),
       todayKey: store.dateKey(),
       tab: ui.diaryTab,
+      memories: store.getMemories(),
       chatMessages: getChatMessages(),
       chatSettings: getChatSettings(),
-      chatConfigured: hasChatKey(),
       chatSending: ui.chatSending,
-      chatError: ui.chatError
+      chatError: ui.chatError,
+      chatMode: ui.chatMode
     });
   } else if (ui.route === "rewards") {
     html = renderRewards({ state, stats });
@@ -224,7 +238,8 @@ function renderPage({ focusPage = false, animatePage = true } = {}) {
       calendar: ui.calendar,
       versionInfo: ui.versionInfo,
       updateAvailable: ui.updateAvailable,
-      platform: platformLabel()
+      platform: platformLabel(),
+      memoryCount: store.getMemories().length
     });
   }
   page.className = `page page--${ui.route}`;
@@ -304,6 +319,17 @@ function bindPage() {
       window.requestAnimationFrame(() => {
         const scroller = $("#chat-scroll");
         if (scroller) scroller.scrollTop = scroller.scrollHeight;
+        if (ui.chatFocus && window.matchMedia("(max-width: 680px)").matches) {
+          const composer = $(".chat-composer");
+          const nav = $(".bottom-nav");
+          if (composer) {
+            const rect = composer.getBoundingClientRect();
+            const limit = nav ? nav.getBoundingClientRect().top : window.innerHeight;
+            const overflow = rect.bottom - limit + 10;
+            if (overflow > 0) window.scrollBy({ top: overflow, left: 0, behavior: "auto" });
+          }
+        }
+        ui.chatFocus = false;
       });
     }
   } else if (ui.route === "me") {
@@ -643,18 +669,45 @@ function handleAction(action, el) {
       break;
     case "open-diary-chat":
       ui.diaryTab = "chat";
+      ui.chatMode = hasChatKey() ? "api" : "local";
+      ui.chatFocus = true;
       ui.chatError = "";
       audio.play("nav");
       location.hash = "#/diary";
-      if (ui.route === "diary") switchDiaryTab("chat");
+      if (ui.route === "diary") refreshAll({ keepScroll: false });
       break;
     case "edit-diary-entry":
       audio.play("click");
       openDiaryEntryModal(el.dataset.date);
       break;
+    case "open-memory":
+      openMemoryPage();
+      break;
+    case "memory-suggestion":
+      addMemorySuggestion(el.dataset.text, el.dataset.kind);
+      break;
+    case "edit-memory":
+      audio.play("click");
+      openMemoryModal(store.getMemories().find((item) => item.id === el.dataset.id));
+      break;
+    case "delete-memory":
+      askDeleteMemory(el.dataset.id);
+      break;
+    case "remember-chat-message":
+      audio.play("click");
+      rememberChatMessage(el.dataset.id);
+      break;
     case "open-chat-settings":
       audio.play("click");
       openChatSettings();
+      break;
+    case "switch-local-chat":
+      ui.chatMode = "local";
+      ui.chatError = "";
+      closeModal();
+      audio.play("click");
+      if (ui.route === "diary") refreshAll({ keepScroll: true });
+      toast("现在是离线小灯。", { iconName: "leaf" });
       break;
     case "open-chat-key-page":
       openExternal("https://platform.deepseek.com/api_keys");
@@ -954,12 +1007,13 @@ function diaryFullDate(key) {
 }
 
 function switchDiaryTab(tab) {
-  const next = tab === "chat" ? "chat" : "journal";
+  const next = tab === "chat" ? "chat" : tab === "memory" ? "memory" : "journal";
   if (ui.diaryTab === next) {
     window.scrollTo({ top: 0, left: 0, behavior: "auto" });
     return;
   }
   ui.diaryTab = next;
+  if (next === "chat") ui.chatFocus = true;
   ui.chatError = "";
   audio.play("nav");
   refreshAll({ keepScroll: false });
@@ -992,12 +1046,88 @@ function openDiaryEntryModal(key) {
   `, { className: "modal--diary" });
 }
 
+function openMemoryModal(memory = null, presetText = "") {
+  const text = String(memory?.text || presetText || "").slice(0, 80);
+  const kind = memory?.kind || "care";
+  openModal(`
+    ${modalHead(memory ? "改一件小事" : "让小灯记住", "A SMALL THING")}
+    <p class="modal-sub">只写你愿意留下的。它可以很小，也可以随时删掉。</p>
+    <form class="modal-form" data-form="memory" data-id="${memory ? esc(memory.id) : ""}">
+      <label class="field-label" for="memory-text">这件小事</label>
+      <input id="memory-text" class="text-input" name="text" maxlength="80" autocomplete="off" value="${esc(text)}" placeholder="比如：我怕冷，喜欢靠窗坐。" data-autofocus>
+      <div class="memory-kind-options">
+        ${Object.entries(MEMORY_KINDS).map(([id, item]) => `
+          <label class="memory-kind-option">
+            <input type="radio" name="kind" value="${id}" ${kind === id ? "checked" : ""}>
+            <span>${icon(item.icon)} ${item.label}</span>
+          </label>
+        `).join("")}
+      </div>
+      <p class="form-hint">只保存在这台设备；连接 API 时，最近的记忆会作为聊天上下文发送给你配置的接口。</p>
+      <p class="form-error" hidden></p>
+      <div class="form-actions">
+        <div>
+          ${memory ? `<button class="text-btn text-btn--danger" type="button" data-action="delete-memory" data-id="${esc(memory.id)}">忘掉这件</button>` : ""}
+        </div>
+        <div class="form-actions__right">
+          <button class="pixel-btn pixel-btn--ghost" type="button" data-action="close-modal">取消</button>
+          <button class="pixel-btn pixel-btn--gold" type="submit">收进小本子</button>
+        </div>
+      </div>
+    </form>
+  `, { className: "modal--memory" });
+}
+
+function openMemoryPage() {
+  ui.diaryTab = "memory";
+  ui.chatError = "";
+  audio.play("nav");
+  location.hash = "#/diary";
+  if (ui.route === "diary") refreshAll({ keepScroll: false });
+}
+
+function addMemorySuggestion(text, kind) {
+  const memory = store.addMemory(text, kind || "care", "manual");
+  if (!memory) return;
+  if (memory.duplicate) {
+    toast("这件事小灯已经记着了。", { iconName: "heart" });
+    return;
+  }
+  if (ui.route === "diary" && ui.diaryTab === "memory") {
+    refreshAll({ keepScroll: true });
+  }
+  toast("小灯记住了。", { iconName: "heart", tone: "gold" });
+}
+
+function rememberChatMessage(id) {
+  const message = getChatMessages().find((item) => item.id === id);
+  if (!message) return;
+  openMemoryModal(null, message.content);
+}
+
+function askDeleteMemory(id) {
+  const memory = store.getMemories().find((item) => item.id === id);
+  if (!memory) return;
+  openConfirm({
+    title: "忘掉这件小事？",
+    body: `小灯会忘掉「${esc(memory.text)}」。${memory.source === "chat" ? " 聊天记录不会被删除。" : ""}`,
+    confirmLabel: "忘掉",
+    danger: true,
+    onConfirm: () => {
+      store.removeMemory(id);
+      if (ui.route === "diary") refreshAll({ keepScroll: true });
+      toast("已经忘掉了。", { iconName: "moon" });
+    }
+  });
+}
+
 function openChatSettings() {
   const settings = getChatSettings();
   const masked = maskKey(settings.apiKey);
   openModal(`
     ${modalHead("连接 DeepSeek", "CHAT SETTINGS")}
     <p class="modal-sub">小灯会用 DeepSeek V4.1 Flash 陪你说话。Key 只保存在这台设备里，不进入导出备份，也不会经过微光小屋的服务器。</p>
+    <p class="chat-fine">联网聊天时，最近的「小灯记得」会作为上下文一起发送给 DeepSeek；离线小灯不会上传任何内容。</p>
     <form class="modal-form" data-form="chat-settings">
       <label class="field-label" for="chat-key">DeepSeek API Key</label>
       <input id="chat-key" class="text-input" name="apiKey" type="password" autocomplete="off" spellcheck="false" placeholder="${masked ? `已保存 ${masked}，留空保留` : "sk-..."}" data-autofocus>
@@ -1024,6 +1154,7 @@ function openChatSettings() {
         </div>
       </div>
     </form>
+    <button class="text-btn chat-local-switch" type="button" data-action="switch-local-chat">${icon("leaf")} 先和离线小灯聊（不联网）</button>
     <div class="chat-web-entry">
       <b>不想用 API？</b>
       <a class="text-btn" href="https://chat.deepseek.com/" target="_blank" rel="noopener" data-action="open-deepseek-web">打开 DeepSeek 网页版（免费）↗</a>
@@ -1064,9 +1195,10 @@ function askClearChatKey() {
     danger: true,
     onConfirm: () => {
       clearChatKey();
+      ui.chatMode = "local";
       ui.chatError = "";
       if (ui.route === "diary") refreshAll({ keepScroll: false });
-      toast("API Key 已从这台设备删除。", { iconName: "lock" });
+      toast("API Key 已从这台设备删除。小灯会在离线陪着你。", { iconName: "lock" });
     }
   });
 }
@@ -1093,27 +1225,49 @@ function chatContextSummary() {
   const energy = overview.log?.energy && ENERGY[overview.log.energy]
     ? ENERGY[overview.log.energy].label
     : "还没选";
+  const memories = store.getMemoryPrompt();
   return [
     `今天是 ${store.dateKey()}`,
     `用户称呼：${state.profile.name || "还没留名字"}`,
     `今天完成了 ${overview.doneCount}/${overview.total} 件小事`,
     `能量状态：${energy}`,
     `历史最长连续：${stats.longestStreak || 0} 天`,
-    `此刻在场景：${getHomePlace().name}`
-  ].join("；") + "。";
+    `此刻在场景：${getHomePlace().name}`,
+    memories ? `用户愿意让小灯记得的小事：${memories}` : ""
+  ].filter(Boolean).join("；") + "。";
 }
 
 async function sendChatTurn(rawText) {
   const text = String(rawText || "").trim().slice(0, 4000);
   if (!text || ui.chatSending) return;
-  if (!hasChatKey()) {
+  const useLocal = ui.chatMode === "local" || !hasChatKey();
+  if (useLocal) {
+    ui.chatMode = "local";
+    appendChatMessage("user", text);
+    ui.chatSending = true;
+    ui.chatError = "";
+    ui.diaryTab = "chat";
     audio.play("click");
-    toast("先填一个 DeepSeek API Key，才能联网聊天。", { iconName: "lock" });
-    openChatSettings();
+    refreshAll({ keepScroll: true });
+    try {
+      await new Promise((resolve) => window.setTimeout(resolve, 480));
+      const result = generateLocalReply(text);
+      appendChatMessage("assistant", result.content);
+      if (result.savedMemory) {
+        toast(`小灯记住了：「${result.savedMemory.text}」`, { iconName: "heart", duration: 3600 });
+      }
+    } catch {
+      ui.chatError = "刚才没有接上话，再试一次吧。";
+    } finally {
+      ui.chatSending = false;
+      if (ui.route === "diary" && ui.diaryTab === "chat") {
+        refreshAll({ keepScroll: true });
+      }
+    }
     return;
   }
   if (navigator.onLine === false) {
-    ui.chatError = "现在没有联网。等有网了再和小灯说话吧。";
+    ui.chatError = "现在没有联网。想说话的话，切回离线小灯也可以。";
     ui.diaryTab = "chat";
     refreshAll({ keepScroll: true });
     return;
@@ -1829,6 +1983,7 @@ function askReset() {
       clearChatKey();
       ui.chatError = "";
       ui.chatSending = false;
+      ui.chatMode = "local";
       ui.diaryTab = "journal";
       ui.calendar = { year: new Date().getFullYear(), month: new Date().getMonth() + 1 };
       ui.speech = "";
@@ -1986,6 +2141,41 @@ async function onDocumentSubmit(event) {
     return;
   }
 
+  if (type === "memory") {
+    const fd = new FormData(form);
+    const text = String(fd.get("text") || "").trim();
+    const kind = String(fd.get("kind") || "care");
+    if (!text) {
+      showFormError(form, "写一件小事吧，哪怕只有几个字。");
+      $("#memory-text", form)?.focus();
+      return;
+    }
+    if (!MEMORY_KINDS[kind]) {
+      showFormError(form, "选一种分类。");
+      return;
+    }
+    const id = form.dataset.id;
+    if (id) {
+      const updated = store.updateMemory(id, { text, kind });
+      if (!updated) {
+        showFormError(form, "这件小事没有保存成功，再试一次吧。");
+        return;
+      }
+    } else {
+      const saved = store.addMemory(text, kind, "manual");
+      if (saved?.duplicate) {
+        closeModal();
+        toast("这件事小灯已经记着了。", { iconName: "heart" });
+        return;
+      }
+    }
+    closeModal();
+    if (ui.route === "diary") refreshAll({ keepScroll: true });
+    audio.play("check");
+    toast(id ? "改好了。" : "小灯记住了。", { iconName: "heart", tone: "gold" });
+    return;
+  }
+
   if (type === "chat-settings") {
     const current = getChatSettings();
     const fd = new FormData(form);
@@ -2008,7 +2198,9 @@ async function onDocumentSubmit(event) {
     }
     closeModal();
     ui.chatError = "";
+    ui.chatMode = "api";
     ui.diaryTab = "chat";
+    ui.chatFocus = true;
     refreshAll({ keepScroll: false });
     audio.play("open");
     toast("连上了。想说什么都可以。", { iconName: "spark", tone: "gold" });

@@ -7,6 +7,7 @@ import {
   ENERGY,
   HABIT_ICON_LABELS,
   HABIT_TIPS,
+  MEMORY_KINDS,
   REWARD_ICON_LABELS,
   TODAY_SUBS
 } from "./data.js";
@@ -169,6 +170,7 @@ function renderNextReward(next, hasRewards = false) {
 export function renderToday(ctx) {
   const { state, stats, overview, speech } = ctx;
   const homePlace = ctx.homePlace || PLACES[0];
+  const memoryCount = Number(ctx.memoryCount) || 0;
   const bucket = timeBucket();
   const greeting = greetingFor(bucket, state.profile.name);
   const sub = pickDaily(TODAY_SUBS);
@@ -274,6 +276,11 @@ export function renderToday(ctx) {
               <span class="muted">空一行分段 · 只保存在这台设备上</span>
               <span data-note-count>${note.length} 字</span>
             </div>
+            <button class="memory-peek" type="button" data-action="open-memory">
+              <span class="memory-peek__icon">${icon("heart")}</span>
+              <span><b>小灯记得</b><small>${memoryCount ? `已经记住 ${memoryCount} 件小事` : "在角落里，等你留下一件小事"}</small></span>
+              <span class="setting-arrow">${icon("right")}</span>
+            </button>
           </section>
       </div>
     </section>
@@ -734,56 +741,51 @@ function renderChatBubble(message) {
       ${isUser ? "" : `<span class="chat-avatar">${icon("lantern")}</span>`}
       <div class="chat-bubble">
         <div class="chat-bubble__text">${paragraphs.map((line) => line ? `<p>${esc(line)}</p>` : "<br>").join("")}</div>
-        <time>${chatTime(message.at)}</time>
+        <div class="chat-bubble__foot">
+          ${isUser ? `<button class="chat-remember" type="button" data-action="remember-chat-message" data-id="${esc(message.id)}">${icon("heart")} 记住</button>` : ""}
+          <time>${chatTime(message.at)}</time>
+        </div>
       </div>
       ${isUser ? `<span class="chat-avatar chat-avatar--user">${icon("user")}</span>` : ""}
     </div>
   `;
 }
 
-function renderChat({ chatMessages, chatSettings, chatConfigured, chatSending, chatError }) {
-  if (!chatConfigured) {
-    return `
-      <section class="panel chat-setup">
-        <div class="chat-setup__mark">${icon("lantern")}</div>
-        <p class="date-kicker">DEEPSEEK V4.1 FLASH</p>
-        <h2>和小灯聊聊天</h2>
-        <p class="chat-setup__lead">小屋可以联网了。填一个你自己的 DeepSeek API Key，就能和小灯说话。</p>
-        <div class="chat-setup__notes">
-          <p>${icon("lock")} Key 只保存在这台设备里，不进入导出备份。</p>
-          <p>${icon("spark")} 请求从你的设备直接发往 <code>api.deepseek.com</code>，不经过微光小屋的服务器。</p>
-          <p>${icon("heart")} 聊天会发送给 DeepSeek；请不要在里面写密码、身份证号等敏感信息。</p>
-        </div>
-        <a class="text-btn" href="https://platform.deepseek.com/api_keys" target="_blank" rel="noopener" data-action="open-chat-key-page">去 DeepSeek 创建 API Key ↗</a>
-        <button class="pixel-btn pixel-btn--gold pixel-btn--wide" type="button" data-action="open-chat-settings">${icon("spark")} 连接 DeepSeek</button>
-        <a class="pixel-btn pixel-btn--ghost pixel-btn--wide chat-web-btn" href="https://chat.deepseek.com/" target="_blank" rel="noopener" data-action="open-deepseek-web">${icon("right")} 打开 DeepSeek 网页版（免费）</a>
-        <p class="chat-fine">网页版会在新标签或应用内浏览器打开；登录和对话由 DeepSeek 页面完成，不会自动写进小屋。</p>
-        <p class="chat-fine">没有 Key 也没关系。日记本和所有场景都可以离线使用。</p>
-      </section>
-    `;
-  }
-
+function renderChat({ chatMessages, chatSettings, chatSending, chatError, chatMode = "local" }) {
   const messages = Array.isArray(chatMessages) ? chatMessages : [];
   const intro = messages.length === 0;
+  const isLocal = chatMode !== "api";
   return `
-    <section class="panel chat-shell">
+    <section class="panel chat-shell ${isLocal ? "chat-shell--local" : ""}">
       <div class="chat-head">
         <span class="chat-head__avatar">${icon("lantern")}</span>
         <div class="chat-head__copy">
           <b>小灯</b>
-          <small>${esc(chatSettings.model || "deepseek-flash")} · 联网陪伴</small>
+          <small>${isLocal ? "离线陪伴 · 不是大模型" : `${esc(chatSettings?.model || "deepseek-flash")} · 联网`}</small>
         </div>
         <div class="chat-head__actions">
+          <button class="icon-btn" type="button" data-action="open-memory" aria-label="小灯记得的小事">${icon("book")}</button>
           <button class="icon-btn" type="button" data-action="open-chat-settings" aria-label="聊天与 API Key 设置">${icon("gear")}</button>
           <button class="icon-btn" type="button" data-action="clear-chat" aria-label="清空聊天记录">${icon("trash")}</button>
         </div>
       </div>
+      ${isLocal ? `
+        <div class="chat-local-note">
+          <div>
+            <b>${icon("leaf")} 不用联网，也能说说话</b>
+            <p>它不是大模型，不会编造很多知识；但它会用你写下的小事回应你。</p>
+          </div>
+          <button class="text-btn" type="button" data-action="open-chat-settings">连接 DeepSeek ›</button>
+        </div>
+      ` : ""}
       <div class="chat-scroll" id="chat-scroll">
         ${intro ? `
           <div class="chat-greeting">
             <span class="chat-avatar">${icon("lantern")}</span>
             <div class="chat-bubble">
-              <div class="chat-bubble__text"><p>我在。今天想说什么都可以，不用组织语言。</p><p>如果不知道从哪里开始，可以先说一句「有点累」。</p></div>
+              <div class="chat-bubble__text">${isLocal
+                ? "<p>我在。今天想说什么都可以，不用组织语言。</p><p>我会记得你愿意留下的小事。</p>"
+                : "<p>我在。今天想说什么都可以，不用组织语言。</p><p>如果不知道从哪里开始，可以先说一句「有点累」。</p>"}</div>
             </div>
           </div>
         ` : ""}
@@ -799,8 +801,8 @@ function renderChat({ chatMessages, chatSettings, chatConfigured, chatSending, c
       ${intro ? `
         <div class="chat-prompts">
           <button type="button" data-action="chat-prompt" data-text="今天有点累。">今天有点累</button>
-          <button type="button" data-action="chat-prompt" data-text="陪我发会儿呆吧。">陪我发会儿呆</button>
-          <button type="button" data-action="chat-prompt" data-text="帮我把今天变小一点。">把今天变小一点</button>
+          <button type="button" data-action="chat-prompt" data-text="你记得我吗？">你记得我吗</button>
+          <button type="button" data-action="chat-prompt" data-text="陪我坐一会儿吧。">陪我坐一会儿</button>
         </div>
       ` : ""}
       <div class="chat-composer">
@@ -808,8 +810,78 @@ function renderChat({ chatMessages, chatSettings, chatConfigured, chatSending, c
         <button class="pixel-btn pixel-btn--gold" type="button" data-action="send-chat" ${chatSending ? "disabled" : ""}>${icon("right")} 发送</button>
       </div>
       <p class="chat-foot">Enter 发送 · Shift + Enter 换行 · 聊天记录只保存在本机</p>
-      <p class="chat-safety">小灯不是专业心理咨询师。如果情况紧急，请联系信任的人，或拨打心理援助热线 12356。</p>
+      <p class="chat-safety">${isLocal ? "离线小灯不是大模型，也不是专业心理咨询师。" : "小灯不是专业心理咨询师。"}如果情况紧急，请联系信任的人，或拨打心理援助热线 12356。</p>
     </section>
+  `;
+}
+
+function renderMemory(memories) {
+  const list = Array.isArray(memories) ? memories : [];
+  return `
+    <section class="panel memory-add">
+      <div class="memory-add__head">
+        <div>
+          <span class="eyebrow">REMEMBER THIS</span>
+          <h2>让小灯记住一件小事</h2>
+          <p>不用是大事。怕冷、喜欢靠窗、最近很累，都可以。</p>
+        </div>
+        <span class="memory-add__mark">${icon("heart")}</span>
+      </div>
+      <form class="memory-form" data-form="memory">
+        <div class="memory-input-row">
+          <input class="text-input" name="text" maxlength="80" autocomplete="off" placeholder="比如：我怕冷，喜欢靠窗坐。" aria-label="要记住的小事">
+          <button class="pixel-btn pixel-btn--gold" type="submit">${icon("plus")} 记下来</button>
+        </div>
+        <div class="memory-kind-options">
+          ${Object.entries(MEMORY_KINDS).map(([id, kind]) => `
+            <label class="memory-kind-option">
+              <input type="radio" name="kind" value="${id}" ${id === "care" ? "checked" : ""}>
+              <span>${icon(kind.icon)} ${kind.label}</span>
+            </label>
+          `).join("")}
+        </div>
+      </form>
+      <div class="memory-quick">
+        <span>不知道写什么？</span>
+        <button type="button" data-action="memory-suggestion" data-text="我怕冷。" data-kind="boundary">我怕冷</button>
+        <button type="button" data-action="memory-suggestion" data-text="我喜欢靠窗坐。" data-kind="like">喜欢靠窗</button>
+        <button type="button" data-action="memory-suggestion" data-text="最近很容易累。" data-kind="recent">最近很累</button>
+        <button type="button" data-action="memory-suggestion" data-text="我不喜欢被催。" data-kind="boundary">不喜欢被催</button>
+      </div>
+    </section>
+
+    <section class="memory-list">
+      <div class="section-head section-head--plain">
+        <div>
+          <span class="eyebrow">THINGS I KEEP</span>
+          <h2>小灯记得的</h2>
+        </div>
+        <span class="chip">${icon("heart")} ${list.length} 件</span>
+      </div>
+      ${list.length ? `<div class="memory-cards">${list.map((memory) => {
+        const kind = MEMORY_KINDS[memory.kind] || MEMORY_KINDS.care;
+        return `
+          <article class="panel memory-card" data-kind="${esc(memory.kind)}">
+            <div class="memory-card__head">
+              <span class="memory-kind">${icon(kind.icon)} ${kind.label}</span>
+              <span class="memory-card__date">${shortDate(memory.createdAt)}</span>
+              <span class="memory-card__actions">
+                <button class="icon-btn" type="button" data-action="edit-memory" data-id="${esc(memory.id)}" aria-label="编辑这件小事">${icon("pen")}</button>
+                <button class="icon-btn" type="button" data-action="delete-memory" data-id="${esc(memory.id)}" aria-label="忘掉这件小事">${icon("trash")}</button>
+              </span>
+            </div>
+            <p>${esc(memory.text)}</p>
+          </article>
+        `;
+      }).join("")}</div>` : `
+        <div class="panel empty-state memory-empty">
+          <span class="empty-state__icon">${icon("heart")}</span>
+          <h2>小灯还没有记住什么</h2>
+          <p>从一句「我喜欢……」或「最近……」开始。你愿意留下的，它才会记得。</p>
+        </div>
+      `}
+    </section>
+    <p class="memory-privacy">${icon("lock")} 这些记忆只保存在这台设备上，会随导出备份一起保存。只有你主动连接 DeepSeek 聊天时，最近的记忆才会作为聊天上下文发送给你配置的接口。</p>
   `;
 }
 
@@ -819,36 +891,50 @@ export function renderDiary({
   todayNote = "",
   todayKey = "",
   tab = "journal",
+  memories = [],
   chatMessages = [],
   chatSettings = null,
-  chatConfigured = false,
   chatSending = false,
-  chatError = ""
+  chatError = "",
+  chatMode = "local"
 }) {
+  const isChat = tab === "chat";
+  const isMemory = tab === "memory";
+  const memoryCount = memories.length;
+  const chatLabel = chatMode === "api" ? "联网" : "离线";
   return `
-    <section class="sub-page diary-page">
+    <section class="sub-page diary-page ${isChat ? "diary-page--chat" : ""}">
       <header class="page-head diary-head">
         <div>
-          <p class="date-kicker">YOUR QUIET PAGES</p>
-          <h1>日记本</h1>
-          <p class="page-sub">写多少都可以。空一行，就是新的一段。这里不统计字数，也不催你更新。</p>
+          <p class="date-kicker">${isMemory ? "THINGS I KEEP" : isChat ? "THE CORNER" : "YOUR QUIET PAGES"}</p>
+          <h1>${isMemory ? "小灯记得" : isChat ? "和小灯聊聊" : "日记本"}</h1>
+          <p class="page-sub">${isMemory
+            ? "不是全部，只是你愿意留下的小事。可以随时改，也可以随时忘掉。"
+            : isChat
+              ? "离线也能说话。小灯会记得你写下的；想聊更多，可以连接 DeepSeek。"
+              : "写多少都可以。空一行，就是新的一段。这里不统计字数，也不催你更新。"}</p>
         </div>
-        <span class="chip">${icon("book")} ${entries.length} 篇</span>
+        <span class="chip">${isMemory ? `${icon("heart")} ${memoryCount} 件` : isChat ? `${icon("lantern")} ${chatLabel}` : `${icon("book")} ${entries.length} 篇`}</span>
       </header>
 
-      <div class="diary-tabs" role="tablist" aria-label="日记与聊天">
+      <div class="diary-tabs" role="tablist" aria-label="日记、记忆与聊天">
         <button class="diary-tab ${tab === "journal" ? "is-active" : ""}" type="button" role="tab" aria-selected="${tab === "journal"}" data-action="diary-tab" data-tab="journal">${icon("book")} 日记本</button>
-        <button class="diary-tab ${tab === "chat" ? "is-active" : ""}" type="button" role="tab" aria-selected="${tab === "chat"}" data-action="diary-tab" data-tab="chat">${icon("lantern")} 和小灯聊聊 <span>联网</span></button>
+        <button class="diary-tab ${tab === "memory" ? "is-active" : ""}" type="button" role="tab" aria-selected="${tab === "memory"}" data-action="diary-tab" data-tab="memory">${icon("heart")} 小灯记得 ${memoryCount ? `<span>${memoryCount}</span>` : ""}</button>
+        <button class="diary-tab ${tab === "chat" ? "is-active" : ""}" type="button" role="tab" aria-selected="${tab === "chat"}" data-action="diary-tab" data-tab="chat">${icon("lantern")} 聊聊天 <span>${chatLabel}</span></button>
       </div>
 
-      ${tab === "chat" ? renderChat({ chatMessages, chatSettings, chatConfigured, chatSending, chatError }) : renderJournal(entries, todayNote, todayKey)}
+      ${isChat ? renderChat({ chatMessages, chatSettings, chatSending, chatError, chatMode }) : isMemory ? renderMemory(memories) : renderJournal(entries, todayNote, todayKey)}
 
-      <footer class="page-quote">${icon("lantern")}<span>说不出来的时候，写下来也可以。写不出来，也没关系。</span></footer>
+      <footer class="page-quote">${icon("lantern")}<span>${isMemory
+        ? "你愿意留下的，才会被记住。"
+        : isChat
+          ? "不用说得漂亮，能说出来就很好。"
+          : "说不出来的时候，写下来也可以。写不出来，也没关系。"}</span></footer>
     </section>
   `;
 }
 
-export function renderMe({ state, stats, calendar, versionInfo = null, updateAvailable = false, platform = "网页版" }) {
+export function renderMe({ state, stats, calendar, versionInfo = null, updateAvailable = false, platform = "网页版", memoryCount = 0 }) {
   const grid = getMonthGrid(calendar.year, calendar.month);
   const monthShown = grid.filter((cell) => cell && cell.shown).length;
   const level = stats.level;
@@ -987,9 +1073,14 @@ export function renderMe({ state, stats, calendar, versionInfo = null, updateAva
               <span class="setting-row__copy"><b>去走走</b><small>13 个可停留场景，点东西听小灯说话</small></span>
               <span class="setting-arrow">${icon("right")}</span>
             </button>
+            <button class="setting-row" type="button" data-action="open-memory">
+              <span class="setting-row__icon">${icon("heart")}</span>
+              <span class="setting-row__copy"><b>小灯记得</b><small>${memoryCount ? `已经记住 ${memoryCount} 件小事` : "在角落里，等你留下一件小事"}</small></span>
+              <span class="setting-arrow">${icon("right")}</span>
+            </button>
             <button class="setting-row" type="button" data-action="open-diary-chat">
               <span class="setting-row__icon">${icon("lantern")}</span>
-              <span class="setting-row__copy"><b>和小灯聊天</b><small>DeepSeek V4.1 Flash · 需要自己的 API Key</small></span>
+              <span class="setting-row__copy"><b>和小灯聊天</b><small>离线陪伴免费；连接 API 后可以用 DeepSeek</small></span>
               <span class="setting-arrow">${icon("right")}</span>
             </button>
             <a class="setting-row" href="https://chat.deepseek.com/" target="_blank" rel="noopener" data-action="open-deepseek-web">
@@ -1020,8 +1111,8 @@ export function renderMe({ state, stats, calendar, versionInfo = null, updateAva
           <span class="eyebrow">ABOUT THIS NOOK</span>
           <h2>关于微光小屋</h2>
           <p>一个不催你的打卡小屋。记录出现过的一点点，给想对自己好的心情留个位置。</p>
-          <p class="about-small">打卡、日记和设置只保存在这台设备的浏览器里。不上传，不排名，不需要登录。换设备前记得导出备份。</p>
-          <p class="about-small">联网聊天是可选的：需要你自己的 DeepSeek API Key，聊天内容会直接发送给 DeepSeek；Key 和聊天记录不进备份。</p>
+          <p class="about-small">打卡、日记、小灯记得和设置只保存在这台设备的浏览器里。不上传，不排名，不需要登录。换设备前记得导出备份。</p>
+          <p class="about-small">联网聊天是可选的：需要你自己的 DeepSeek API Key，聊天内容和最近的记忆会直接发送给 DeepSeek；Key 和聊天记录不进备份。离线小灯不会上传任何内容。</p>
           <div class="about-kind">
             ${icon("heart")}
             <p>如果最近真的很累，别一个人扛。找一个信任的人说说，或联系专业的心理支持。你不需要先变得有用，才值得被帮助。</p>
