@@ -4,6 +4,12 @@
 
 微光小屋是一个偏「照顾自己」而不是「管理自己」的打卡应用。没有排行榜，没有连续中断惩罚，也不要求每天都很有动力。完成一件小事、来喘口气、写一句今天的心情，都算数。
 
+![微光小屋桌面版预览](docs/preview-desktop.png)
+
+<p align="center">
+  <img src="docs/preview-mobile.png" alt="微光小屋手机版预览" width="280">
+</p>
+
 - 网页版：<https://wangji330330-ops.github.io/113/>
 - Android：[下载调试 APK](https://github.com/wangji330330-ops/113/releases/download/v0.1.0/glimmer-nook-v0.1.0-debug.apk)，也可以按下方说明本地打包。
 - [GitHub Release v0.1.0](https://github.com/wangji330330-ops/113/releases/tag/v0.1.0)
