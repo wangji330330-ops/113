@@ -1,5 +1,5 @@
 /* 微光小屋 offline cache */
-const CACHE = "glimmer-nook-v0.1.0";
+const CACHE = "glimmer-nook-v0.1.1";
 const FONT_CSS = "./assets/fonts/fusion-pixel/fusion-pixel.css";
 const CORE = [
   "./",
@@ -25,14 +25,7 @@ self.addEventListener("install", (event) => {
   event.waitUntil((async () => {
     const cache = await caches.open(CACHE);
     await cache.addAll(CORE);
-    try {
-      const css = await fetch(FONT_CSS).then((response) => response.text());
-      const urls = Array.from(css.matchAll(/url\(([^)]+\.woff2)\)/g))
-        .map((match) => new URL(match[1], new URL(FONT_CSS, self.location.href)).href);
-      await Promise.allSettled(urls.map((url) => cache.add(url)));
-    } catch {
-      /* Fonts can warm up on first use. */
-    }
+    // Font subsets are cached on demand by the fetch handler below.
     await self.skipWaiting();
   })());
 });
