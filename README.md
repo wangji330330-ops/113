@@ -5,7 +5,8 @@
 微光小屋是一个偏「照顾自己」而不是「管理自己」的打卡应用。没有排行榜，没有连续中断惩罚，也不要求每天都很有动力。完成一件小事、来喘口气、写一句今天的心情，都算数。
 
 - 网页版：<https://wangji330330-ops.github.io/113/>
-- Android：[下载调试 APK](download/glimmer-nook-v0.1.0-debug.apk)，也可以按下方说明本地打包。
+- Android：[下载调试 APK](https://github.com/wangji330330-ops/113/releases/download/v0.1.0/glimmer-nook-v0.1.0-debug.apk)，也可以按下方说明本地打包。
+- [GitHub Release v0.1.0](https://github.com/wangji330330-ops/113/releases/tag/v0.1.0)
 - 仓库另附了一份可选的 GitHub Actions 构建模板。
 
 ## 现在有什么
@@ -42,8 +43,9 @@ npm start
 
 ## 下载 Android APK
 
-- 文件：[glimmer-nook-v0.1.0-debug.apk](download/glimmer-nook-v0.1.0-debug.apk)（约 2.1 MB）
-- 校验：`download/glimmer-nook-v0.1.0-debug.apk.sha256`
+- Release 下载：[glimmer-nook-v0.1.0-debug.apk](https://github.com/wangji330330-ops/113/releases/download/v0.1.0/glimmer-nook-v0.1.0-debug.apk)（约 2.1 MB）
+- 仓库镜像：[download/glimmer-nook-v0.1.0-debug.apk](download/glimmer-nook-v0.1.0-debug.apk)
+- 校验：[SHA256](download/glimmer-nook-v0.1.0-debug.apk.sha256)
 - 支持 Android 7.0（API 24）及以上。
 
 安装步骤：
