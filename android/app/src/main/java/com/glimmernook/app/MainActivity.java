@@ -89,11 +89,24 @@ public class MainActivity extends Activity {
 
     @Override
     public void onBackPressed() {
-        if (webView != null && webView.canGoBack()) {
-            webView.goBack();
-        } else {
+        if (webView == null) {
             super.onBackPressed();
+            return;
         }
+        // Let the web app close a dialog before WebView history or the Activity reacts.
+        webView.evaluateJavascript(
+                "(function(){var r=document.getElementById('modal-root');" +
+                        "if(r&&!r.hidden){document.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape'}));return '1';}" +
+                        "return '0';})()",
+                value -> {
+                    if ("\"1\"".equals(value)) return;
+                    if (webView != null && webView.canGoBack()) {
+                        webView.goBack();
+                    } else {
+                        finish();
+                    }
+                }
+        );
     }
 
     @Override
