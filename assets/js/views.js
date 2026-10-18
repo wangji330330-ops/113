@@ -1,5 +1,7 @@
 import {
+  APP_BUILD,
   APP_VERSION,
+  CHANGELOG,
   CONDITION_TYPES,
   EFFORTS,
   ENERGY,
@@ -8,6 +10,8 @@ import {
   REWARD_ICON_LABELS,
   TODAY_SUBS
 } from "./data.js";
+import { LOOK_PARTS } from "./character.js";
+import { PLACES, PLACE_CATEGORIES } from "./place-data.js";
 import { icon, iconTile } from "./icons.js";
 import {
   conditionText,
@@ -29,6 +33,7 @@ import {
 
 const NAV_ITEMS = [
   { route: "today", label: "今日", icon: "lantern" },
+  { route: "places", label: "场景", icon: "map" },
   { route: "habits", label: "小事", icon: "list" },
   { route: "rewards", label: "奖励", icon: "gift" },
   { route: "me", label: "小屋", icon: "user" }
@@ -55,15 +60,18 @@ export function renderAppBar({ state, stats }) {
   `;
 }
 
-export function renderNav({ route, claimableCount = 0 }) {
+export function renderNav({ route, claimableCount = 0, updateAvailable = false }) {
   return NAV_ITEMS.map((item) => {
     const active = item.route === route;
     const badge = item.route === "rewards" && claimableCount > 0
       ? `<span class="nav-badge" aria-label="${claimableCount} 份奖励可领取">${claimableCount}</span>`
       : "";
+    const updateDot = item.route === "me" && updateAvailable
+      ? `<span class="nav-update-dot" aria-label="有新版本可更新"></span>`
+      : "";
     return `
       <a class="nav-item ${active ? "is-active" : ""}" href="#/${item.route}" data-nav ${active ? 'aria-current="page"' : ""}>
-        <span class="nav-item__icon">${icon(item.icon)}${badge}</span>
+        <span class="nav-item__icon">${icon(item.icon)}${badge}${updateDot}</span>
         <span class="nav-item__label">${item.label}</span>
       </a>
     `;
@@ -206,7 +214,10 @@ export function renderToday(ctx) {
                 </div>
                 <div class="energy__options">${energyOptions(overview.log)}</div>
               </div>
-              <p class="scene-caption">${dateLabel()} · 小屋的灯一直给你留着</p>
+              <div class="scene-caption-row">
+                <p class="scene-caption">${dateLabel()} · 小屋的灯一直给你留着</p>
+                <button class="text-btn scene-dress-btn" type="button" data-action="open-wardrobe">${icon("user")} 换个样子</button>
+              </div>
             </div>
           </section>
 
@@ -488,7 +499,127 @@ function calendarCells(cells) {
   }).join("");
 }
 
-export function renderMe({ state, stats, calendar }) {
+function placeCard(place) {
+  const category = PLACE_CATEGORIES[place.category];
+  return `
+    <button class="place-card" type="button" data-action="open-place" data-place="${esc(place.id)}" aria-label="去${esc(place.name)}待一会儿">
+      <span class="place-card__scene">
+        <canvas class="place-card__canvas" data-place-preview="${esc(place.id)}" width="384" height="216" aria-hidden="true"></canvas>
+        <span class="place-card__badge">${icon(place.icon)} ${esc(category?.label || "")}</span>
+        <span class="place-card__enter">进去看看 ›</span>
+      </span>
+      <span class="place-card__copy">
+        <b>${esc(place.name)}</b>
+        <small>${esc(place.tagline)}</small>
+      </span>
+    </button>
+  `;
+}
+
+function placeSection(categoryId, places) {
+  const category = PLACE_CATEGORIES[categoryId];
+  return `
+    <section class="place-section">
+      <div class="section-head section-head--plain">
+        <div>
+          <span class="eyebrow">${categoryId === "home" ? "AT HOME" : "OUT THERE"}</span>
+          <h2>${esc(category.label)}</h2>
+        </div>
+        <span class="place-section__note">${esc(category.note)} · ${places.length} 个地方</span>
+      </div>
+      <div class="place-grid">${places.map(placeCard).join("")}</div>
+    </section>
+  `;
+}
+
+function renderPlaceScene(place, speech) {
+  const category = PLACE_CATEGORIES[place.category];
+  const hotspots = place.hotspots.map((spot) => `
+    <button
+      class="place-hotspot"
+      type="button"
+      style="left:${(spot.x * 100).toFixed(2)}%;top:${(spot.y * 100).toFixed(2)}%;width:${(spot.w * 100).toFixed(2)}%;height:${(spot.h * 100).toFixed(2)}%"
+      data-action="place-hotspot"
+      data-place="${esc(place.id)}"
+      data-hotspot="${esc(spot.id)}"
+      data-label="${esc(spot.label)}"
+      aria-label="看看${esc(spot.label)}">
+      <span class="place-hotspot__dot">${icon("spark")}</span>
+    </button>
+  `).join("");
+  return `
+    <section class="sub-page place-view">
+      <header class="place-view__head">
+        <button class="icon-btn" type="button" data-action="leave-place" aria-label="回到场景列表">${icon("left")}</button>
+        <div class="place-view__title">
+          <p class="date-kicker">${esc(category?.label || "")} / ${esc(place.sceneLabel)}</p>
+          <h1>${esc(place.name)}</h1>
+          <p class="page-sub">${esc(place.tagline)}</p>
+        </div>
+        <span class="chip">${icon(place.icon)} ${esc(place.name)}</span>
+      </header>
+
+      <section class="panel place-stage">
+        <div class="place-frame">
+          <canvas id="place-canvas" class="scene-canvas" width="384" height="216" role="img" aria-label="${esc(place.name)}的像素场景，小灯在这里"></canvas>
+          <div class="scene-top">
+            <span class="scene-pill">${icon(place.icon)} ${esc(place.name)}</span>
+            <span class="scene-pill scene-pill--level">${esc(place.sceneLabel)}</span>
+          </div>
+          <button class="place-scene-hit" type="button" data-action="place-character" aria-label="和小灯说说话，或者点点场景里的东西"></button>
+          ${hotspots}
+          <div class="scene-speech place-speech" id="place-speech" aria-live="polite">${esc(speech)}</div>
+          <span class="scene-hint">点小灯或场景里的东西</span>
+        </div>
+        <div class="place-stage__foot">
+          <p class="place-quote">“${esc(place.quote)}”</p>
+          <p class="place-subhint">${place.hotspots.map((spot) => spot.label).join(" · ")}</p>
+          <div class="place-actions">
+            <button class="pixel-btn pixel-btn--gold pixel-btn--small" type="button" data-action="place-stay">${icon("heart")} 待一会儿</button>
+            <button class="pixel-btn pixel-btn--ghost pixel-btn--small" type="button" data-action="leave-place">${icon("map")} 换个地方</button>
+            <button class="text-btn" type="button" data-action="go-today">回今日 ›</button>
+          </div>
+        </div>
+      </section>
+
+      <footer class="page-quote">${icon("lantern")}<span>这里不用打卡。想走的时候，随时可以走。</span></footer>
+    </section>
+  `;
+}
+
+export function renderPlaces({ state, activePlace = null, speech = "" }) {
+  const place = activePlace ? PLACES.find((item) => item.id === activePlace) : null;
+  if (place) return renderPlaceScene(place, speech);
+  const home = PLACES.filter((item) => item.category === "home");
+  const outdoor = PLACES.filter((item) => item.category === "outdoor");
+  return `
+    <section class="sub-page places-page">
+      <header class="page-head">
+        <div>
+          <p class="date-kicker">GO SOMEWHERE, GENTLY</p>
+          <h1>去走走</h1>
+          <p class="page-sub">不用真的出门，也不用打卡。去某个地方坐一会儿，点点东西，听小灯说两句话。</p>
+        </div>
+        <span class="chip">${icon("map")} ${PLACES.length} 个地方</span>
+      </header>
+
+      <aside class="places-welcome">
+        <span class="places-welcome__icon">${icon("door")}</span>
+        <div>
+          <b>选一个地方，待一会儿吧。</b>
+          <p>每个场景里都有几样可以点击的东西。没有任务，也没有正确路线。</p>
+        </div>
+      </aside>
+
+      ${placeSection("home", home)}
+      ${placeSection("outdoor", outdoor)}
+
+      <footer class="page-quote">${icon("lantern")}<span>不管去哪里，回来的时候，小屋都亮着。</span></footer>
+    </section>
+  `;
+}
+
+export function renderMe({ state, stats, calendar, versionInfo = null, updateAvailable = false, platform = "网页版" }) {
   const grid = getMonthGrid(calendar.year, calendar.month);
   const monthShown = grid.filter((cell) => cell && cell.shown).length;
   const level = stats.level;
@@ -498,6 +629,17 @@ export function renderMe({ state, stats, calendar }) {
   const nextLevelText = level.next
     ? `再攒 ${level.toNext} 微光，变成「${level.next.name}」。`
     : "你已经是一小片星河了。";
+  const look = state.profile.look || {};
+  const lookText = ["head", "face", "body", "legs", "shoes"]
+    .map((part) => LOOK_PARTS[part]?.find((item) => item.id === look[part])?.name)
+    .filter(Boolean)
+    .join(" · ");
+  const latest = CHANGELOG[0];
+  const versionStatus = updateAvailable && versionInfo
+    ? `发现新版本 v${versionInfo.version}，可以更新。`
+    : versionInfo
+      ? "已经是最新版本。"
+      : "联网后可以检查小屋的新版本。";
 
   return `
     <section class="sub-page me-page">
@@ -511,10 +653,11 @@ export function renderMe({ state, stats, calendar }) {
 
       <div class="me-grid">
         <section class="panel profile-card">
-          <div class="portrait-frame">
+          <button class="portrait-frame portrait-frame--button" type="button" data-action="open-wardrobe" aria-label="打开衣柜，换一身搭配">
             <canvas id="portrait-canvas" class="portrait-canvas" width="96" height="96" role="img" aria-label="小灯的像素头像"></canvas>
             <span class="portrait-status"></span>
-          </div>
+            <span class="portrait-edit">换装</span>
+          </button>
           <div class="profile-card__copy">
             <span class="eyebrow">THE KEEPER OF THIS NOOK</span>
             <div class="profile-name-row">
@@ -522,6 +665,7 @@ export function renderMe({ state, stats, calendar }) {
               <button class="icon-btn" type="button" data-action="edit-name" aria-label="修改称呼">${icon("pen")}</button>
             </div>
             <p>${stats.totalDays ? `你已经在小屋出现过 ${stats.totalDays} 天。` : "今天，是你第一次推开小屋的门。"}</p>
+            <p class="look-summary" title="当前搭配">${icon("user")} ${esc(lookText || "默认搭配")}</p>
             <div class="level-line">
               <span>${icon("spark")} ${level.current.name}</span>
               <span>${stats.totalPoints} 微光</span>
@@ -569,6 +713,26 @@ export function renderMe({ state, stats, calendar }) {
         </div>
       </section>
 
+      <section class="panel update-card">
+        <div class="update-card__head">
+          <div>
+            <span class="eyebrow">VERSION & UPDATE</span>
+            <h2>版本与更新</h2>
+          </div>
+          <span class="version-badge">v${APP_VERSION}</span>
+        </div>
+        <div class="version-line">
+          <span>${icon("lantern")} 微光小屋</span>
+          <span>${esc(platform)} · 构建 ${APP_BUILD}</span>
+        </div>
+        <p class="update-status ${updateAvailable ? "is-update" : ""}" id="update-status">${versionStatus}</p>
+        <p class="update-latest"><b>v${latest.version}</b> ${esc(latest.title)}</p>
+        <div class="update-actions">
+          <button class="pixel-btn pixel-btn--ghost pixel-btn--small" type="button" data-action="check-update">${icon("refresh")} 检查更新</button>
+          <button class="text-btn" type="button" data-action="open-changelog">${icon("list")} 更新日志</button>
+        </div>
+      </section>
+
       <div class="me-columns">
         <section class="panel settings-card">
           <span class="eyebrow">SETTINGS</span>
@@ -583,6 +747,11 @@ export function renderMe({ state, stats, calendar }) {
               <span class="setting-row__icon">${icon("spark")}</span>
               <span class="setting-row__copy"><b>小屋动画</b><small>关闭后，小灯会安静地待着</small></span>
               <span class="switch ${state.settings.motion ? "is-on" : ""}" aria-hidden="true"><i></i></span>
+            </button>
+            <button class="setting-row" type="button" data-action="open-wardrobe">
+              <span class="setting-row__icon">${icon("user")}</span>
+              <span class="setting-row__copy"><b>人物形象</b><small>头 / 面 / 身 / 腿 / 鞋，自由搭配</small></span>
+              <span class="setting-arrow">${icon("right")}</span>
             </button>
             <button class="setting-row" type="button" data-action="export-data">
               <span class="setting-row__icon">${icon("download")}</span>

@@ -1,9 +1,12 @@
 package com.glimmernook.app;
 
 import android.app.Activity;
+import android.content.Intent;
 import android.graphics.Color;
+import android.net.Uri;
 import android.os.Bundle;
 import android.view.View;
+import android.webkit.JavascriptInterface;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebResourceResponse;
 import android.webkit.WebSettings;
@@ -61,6 +64,7 @@ public class MainActivity extends Activity {
                 return assetLoader.shouldInterceptRequest(request.getUrl());
             }
         });
+        webView.addJavascriptInterface(new WebAppBridge(), "GlimmerAndroid");
 
         setContentView(webView);
         boolean restored = savedInstanceState != null && webView.restoreState(savedInstanceState) != null;
@@ -117,5 +121,21 @@ public class MainActivity extends Activity {
             webView = null;
         }
         super.onDestroy();
+    }
+
+    /** Small, local-only bridge used for opening the APK download page. */
+    private class WebAppBridge {
+        @JavascriptInterface
+        public void openExternal(String url) {
+            if (url == null) return;
+            if (!url.startsWith("https://") && !url.startsWith("http://")) return;
+            runOnUiThread(() -> {
+                try {
+                    startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)));
+                } catch (Exception ignored) {
+                    // No browser installed; the web UI shows a fallback link.
+                }
+            });
+        }
     }
 }

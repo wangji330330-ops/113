@@ -1,5 +1,33 @@
-export const APP_VERSION = "0.1.0";
+export const APP_VERSION = "0.2.0";
+export const APP_BUILD = 2;
+export const APP_RELEASED_AT = "2026-10-18";
 export const STORE_KEY = "glimmer-nook:v1";
+
+export const CHANGELOG = [
+  {
+    version: "0.2.0",
+    date: "2026-10-18",
+    title: "小灯会换衣服，也会出门了",
+    items: [
+      "人物形象可以自由搭配：头、面、身、腿、鞋，能组合出很多套。",
+      "新增 13 个可停留场景：客厅、房间、厨房、卫生间、学校、图书馆、电影院、郊游、超市、球场、江边、爬山、兜风。",
+      "点击场景里的不同物件，会触发小灯的不同对话和小动画。",
+      "设置里加入版本检查、更新日志和更新入口；网页版可在线更新，Android 会跳转到新版 APK。",
+      "人物重新绘制，呼吸、眨眼、挥手和开心时的动作更自然。"
+    ]
+  },
+  {
+    version: "0.1.0",
+    date: "2026-10-18",
+    title: "微光小屋开张",
+    items: [
+      "今日打卡、自定义小事与奖励。",
+      "能量签到、半分钟呼吸练习、每日一句话。",
+      "像素小屋、小灯和猫的待机、点击、打卡动画。",
+      "统计、月历足迹、本地备份与离线 PWA。"
+    ]
+  }
+];
 
 export const EFFORTS = {
   1: { label: "轻轻的", short: "轻", points: 1, dots: 1, hint: "几乎不费力，比如喝口水" },

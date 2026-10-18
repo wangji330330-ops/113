@@ -7,6 +7,7 @@ import {
   CONDITION_TYPES,
   levelFor
 } from "./data.js";
+import { DEFAULT_LOOK, normalizeLook } from "./character.js";
 
 const MAX_DONE_PER_DAY = 60;
 
@@ -117,7 +118,8 @@ function createInitialState() {
     profile: {
       name: "",
       createdAt: now,
-      onboarded: false
+      onboarded: false,
+      look: { ...DEFAULT_LOOK }
     },
     settings: {
       sound: true,
@@ -161,7 +163,8 @@ function sanitizeState(raw, { strict = false } = {}) {
     profile: {
       name: clampText(profile.name, 20),
       createdAt: profile.createdAt || base.profile.createdAt,
-      onboarded: Boolean(profile.onboarded)
+      onboarded: Boolean(profile.onboarded),
+      look: normalizeLook(profile.look)
     },
     settings: {
       sound: settings.sound !== false,
@@ -233,6 +236,16 @@ export function setProfileName(name) {
   state.profile.name = clampText(name, 20);
   persist();
   return state.profile.name;
+}
+
+export function setLook(look) {
+  state.profile.look = normalizeLook(look);
+  persist();
+  return state.profile.look;
+}
+
+export function getLook() {
+  return normalizeLook(state.profile.look);
 }
 
 export function completeOnboarding(name) {

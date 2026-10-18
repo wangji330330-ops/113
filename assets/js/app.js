@@ -1,5 +1,8 @@
 import {
   ALL_DONE_LINES,
+  APP_BUILD,
+  APP_VERSION,
+  CHANGELOG,
   CHECK_LINES,
   CONDITION_TYPES,
   EFFORTS,
@@ -16,11 +19,30 @@ import * as store from "./store.js";
 import { icon } from "./icons.js";
 import { audio } from "./audio.js";
 import { Scene, paintPortrait } from "./scene.js";
+import { PlaceScene, paintPlacePreview } from "./places.js";
+import { PLACES, getPlace } from "./place-data.js";
+import {
+  DEFAULT_LOOK,
+  LOOK_PARTS,
+  normalizeLook,
+  paintPersonPreview,
+  randomLook
+} from "./character.js";
+import {
+  applyWebUpdate,
+  checkForUpdate,
+  compareVersions,
+  isAndroidShell,
+  openExternal,
+  platformLabel,
+  shouldCheckOnBoot
+} from "./updater.js";
 import {
   renderAppBar,
   renderHabits,
   renderMe,
   renderNav,
+  renderPlaces,
   renderRewards,
   renderToday
 } from "./views.js";
@@ -32,13 +54,17 @@ import {
   monthTitle
 } from "./helpers.js";
 
-const ROUTES = new Set(["today", "habits", "rewards", "me"]);
+const ROUTES = new Set(["today", "places", "habits", "rewards", "me"]);
 const REDUCED_MOTION = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 const now = new Date();
 
 const ui = {
   route: "today",
   scene: null,
+  placeScene: null,
+  activePlace: null,
+  placeSpeech: "",
+  placeSpeechUntil: 0,
   speech: "",
   speechUntil: 0,
   lastLine: "",
@@ -55,6 +81,10 @@ const ui = {
   breatheTimer: null,
   breatheUnlocked: [],
   breatheCompleted: false,
+  wardrobe: null,
+  versionInfo: null,
+  updateAvailable: false,
+  updateChecking: false,
   transitionToken: 0,
   booted: false,
   currentDay: store.dateKey()
@@ -108,6 +138,7 @@ function currentSpeech() {
 function setDocumentTitle() {
   const titles = {
     today: "微光小屋 · 一点点也算数",
+    places: "去走走 · 微光小屋",
     habits: "我的小事 · 微光小屋",
     rewards: "给自己的奖励 · 微光小屋",
     me: "我的小屋 · 微光小屋"
@@ -120,7 +151,11 @@ function renderShell({ focusPage = false } = {}) {
   const stats = store.getStats();
   document.documentElement.classList.toggle("no-motion", !state.settings.motion);
   $("#app-bar").innerHTML = renderAppBar({ state, stats });
-  $("#bottom-nav").innerHTML = renderNav({ route: ui.route, claimableCount: stats.claimableCount });
+  $("#bottom-nav").innerHTML = renderNav({
+    route: ui.route,
+    claimableCount: stats.claimableCount,
+    updateAvailable: ui.updateAvailable
+  });
   renderPage({ focusPage });
 }
 
@@ -133,12 +168,25 @@ function renderPage({ focusPage = false } = {}) {
   if (ui.route === "today") {
     const overview = store.getTodayOverview();
     html = renderToday({ state, stats, overview, speech: currentSpeech() });
+  } else if (ui.route === "places") {
+    html = renderPlaces({
+      state,
+      activePlace: ui.activePlace,
+      speech: ui.activePlace ? currentPlaceSpeech() : ""
+    });
   } else if (ui.route === "habits") {
     html = renderHabits({ state, stats });
   } else if (ui.route === "rewards") {
     html = renderRewards({ state, stats });
   } else {
-    html = renderMe({ state, stats, calendar: ui.calendar });
+    html = renderMe({
+      state,
+      stats,
+      calendar: ui.calendar,
+      versionInfo: ui.versionInfo,
+      updateAvailable: ui.updateAvailable,
+      platform: platformLabel()
+    });
   }
   page.className = `page page--${ui.route}`;
   page.innerHTML = html;
@@ -170,6 +218,7 @@ function renderPage({ focusPage = false } = {}) {
 }
 
 function bindPage() {
+  const look = store.getLook();
   if (ui.route === "today") {
     const canvas = $("#scene-canvas");
     const overview = store.getTodayOverview();
@@ -178,6 +227,7 @@ function bindPage() {
         done: overview.doneCount,
         total: overview.total,
         mood: overview.log?.energy || null,
+        look,
         motion: store.getState().settings.motion && !REDUCED_MOTION
       });
       if (ui.pendingCelebrate) {
@@ -186,9 +236,22 @@ function bindPage() {
       }
     }
     startIdleSpeech();
+  } else if (ui.route === "places") {
+    const placeCanvas = $("#place-canvas");
+    if (placeCanvas && ui.activePlace) {
+      ui.placeScene = new PlaceScene(placeCanvas, {
+        place: getPlace(ui.activePlace),
+        look,
+        motion: store.getState().settings.motion && !REDUCED_MOTION
+      });
+    } else {
+      $$("[data-place-preview]").forEach((canvas) => {
+        paintPlacePreview(canvas, canvas.dataset.placePreview, look);
+      });
+    }
   } else if (ui.route === "me") {
     const portrait = $("#portrait-canvas");
-    if (portrait) paintPortrait(portrait);
+    if (portrait) paintPortrait(portrait, look);
   }
 }
 
@@ -198,9 +261,34 @@ function cleanupPage() {
     ui.scene.destroy();
     ui.scene = null;
   }
+  if (ui.placeScene) {
+    ui.placeScene.destroy();
+    ui.placeScene = null;
+  }
   if (ui.idleTimer) {
     window.clearInterval(ui.idleTimer);
     ui.idleTimer = null;
+  }
+}
+
+function currentPlaceSpeech() {
+  if (ui.placeSpeech && ui.placeSpeechUntil > Date.now()) return ui.placeSpeech;
+  const place = getPlace(ui.activePlace);
+  ui.placeSpeech = pickLine(place.charLines);
+  ui.placeSpeechUntil = Date.now() + 7000;
+  return ui.placeSpeech;
+}
+
+function sayPlace(text, duration = 5000) {
+  if (!text) return;
+  ui.placeSpeech = text;
+  ui.placeSpeechUntil = Date.now() + duration;
+  const el = $("#place-speech");
+  if (el) {
+    el.textContent = text;
+    el.classList.remove("is-bump");
+    void el.offsetWidth;
+    el.classList.add("is-bump");
   }
 }
 
@@ -248,6 +336,9 @@ function transitionTo(route) {
   }
   if (!$("#modal-root").hidden && ui.modalDismissible) closeModal({ instant: true });
   clearToasts();
+  ui.activePlace = null;
+  ui.placeSpeech = "";
+  ui.placeSpeechUntil = 0;
   const wipe = $("#page-wipe");
   const token = (ui.transitionToken += 1);
   wipe.classList.remove("is-out");
@@ -288,6 +379,7 @@ function boot() {
   }
   window.setInterval(checkDayChange, 30000);
   registerServiceWorker();
+  window.setTimeout(() => maybeCheckUpdatesOnBoot(), 2600);
 }
 
 function checkDayChange() {
@@ -326,7 +418,14 @@ function onDocumentClick(event) {
     audio.play("nav");
     if (nav.getAttribute("href") === `#/${ui.route}`) {
       event.preventDefault();
-      window.scrollTo({ top: 0, behavior: REDUCED_MOTION ? "auto" : "smooth" });
+      if (ui.route === "places" && ui.activePlace) {
+        ui.activePlace = null;
+        ui.placeSpeech = "";
+        renderShell({ focusPage: true });
+        window.scrollTo(0, 0);
+      } else {
+        window.scrollTo({ top: 0, behavior: REDUCED_MOTION ? "auto" : "smooth" });
+      }
     }
     return;
   }
@@ -359,6 +458,57 @@ function handleAction(action, el) {
       break;
     case "poke-scene":
       pokeScene();
+      break;
+    case "open-place":
+      openPlace(el.dataset.place);
+      break;
+    case "leave-place":
+      leavePlace();
+      break;
+    case "place-character":
+      pokePlaceCharacter();
+      break;
+    case "place-hotspot":
+      touchPlaceHotspot(el.dataset.place, el.dataset.hotspot);
+      break;
+    case "place-stay":
+      stayInPlace();
+      break;
+    case "go-today":
+      audio.play("nav");
+      location.hash = "#/today";
+      break;
+    case "open-wardrobe":
+      audio.play("click");
+      openWardrobe();
+      break;
+    case "look-tab":
+      selectLookTab(el.dataset.part);
+      break;
+    case "look-choice":
+      chooseLookOption(el.dataset.part, el.dataset.value);
+      break;
+    case "look-random":
+      randomizeLook();
+      break;
+    case "save-look":
+      saveLook();
+      break;
+    case "check-update":
+      runUpdateCheck(true);
+      break;
+    case "open-changelog":
+      audio.play("click");
+      openChangelog();
+      break;
+    case "apply-update":
+      applyUpdate();
+      break;
+    case "download-update":
+      downloadUpdate();
+      break;
+    case "open-release":
+      openExternal(ui.versionInfo?.releaseUrl || ui.versionInfo?.webUrl || "https://github.com/wangji330330-ops/113/releases");
       break;
     case "toggle-habit":
       toggleHabit(el.dataset.id, el);
@@ -502,6 +652,51 @@ function pokeScene() {
   audio.play("click");
   say(pickLine(POKE_LINES), 3800);
   $("#scene-hint")?.classList.add("is-hidden");
+}
+
+function openPlace(id) {
+  const place = PLACES.find((item) => item.id === id);
+  if (!place) return;
+  audio.play("nav");
+  ui.activePlace = place.id;
+  ui.placeSpeech = pickLine(place.charLines);
+  ui.placeSpeechUntil = Date.now() + 7000;
+  refreshAll({ keepScroll: false });
+}
+
+function leavePlace() {
+  if (!ui.activePlace) return;
+  audio.play("nav");
+  ui.activePlace = null;
+  ui.placeSpeech = "";
+  ui.placeSpeechUntil = 0;
+  refreshAll({ keepScroll: false, focus: '[data-action="open-place"]' });
+}
+
+function pokePlaceCharacter() {
+  const place = getPlace(ui.activePlace);
+  ui.placeScene?.poke();
+  sayPlace(pickLine(place.charLines));
+  audio.play("click");
+  $(".place-frame .scene-hint")?.classList.add("is-hidden");
+}
+
+function touchPlaceHotspot(placeId, hotspotId) {
+  const place = PLACES.find((item) => item.id === placeId);
+  const spot = place?.hotspots.find((item) => item.id === hotspotId);
+  if (!place || !spot) return;
+  ui.placeScene?.hit(spot);
+  sayPlace(pickLine(spot.lines));
+  audio.play("click");
+  $(".place-frame .scene-hint")?.classList.add("is-hidden");
+}
+
+function stayInPlace() {
+  const place = getPlace(ui.activePlace);
+  ui.placeScene?.poke();
+  sayPlace(pickLine(place.stayLines));
+  audio.play("breathe");
+  $(".place-frame .scene-hint")?.classList.add("is-hidden");
 }
 
 function toggleHabit(id, el) {
@@ -885,6 +1080,269 @@ function openNameModal() {
       </div>
     </form>
   `, { className: "modal--form" });
+}
+
+const LOOK_TABS = [
+  ["head", "头"],
+  ["face", "面"],
+  ["body", "身"],
+  ["legs", "腿"],
+  ["shoes", "鞋"]
+];
+
+function lookOptionsHtml(part, draft) {
+  const options = LOOK_PARTS[part] || [];
+  return options.map((option) => {
+    const active = draft[part] === option.id;
+    return `
+      <button class="look-choice ${active ? "is-active" : ""}" type="button"
+        data-action="look-choice" data-part="${part}" data-value="${option.id}"
+        aria-pressed="${active}">
+        <span class="look-choice__swatch" style="--swatch:${option.swatch}"></span>
+        <span class="look-choice__copy"><b>${esc(option.name)}</b><small>${esc(option.desc)}</small></span>
+        <span class="look-choice__check">${active ? icon("check") : ""}</span>
+      </button>
+    `;
+  }).join("");
+}
+
+function lookTabsHtml(part) {
+  return LOOK_TABS.map(([id, label]) => `
+    <button class="look-tab ${id === part ? "is-active" : ""}" type="button"
+      role="tab" aria-selected="${id === part}" data-action="look-tab" data-part="${id}">${label}</button>
+  `).join("");
+}
+
+function paintLookPreview() {
+  if (!ui.wardrobe) return;
+  const canvas = $("#look-preview");
+  if (canvas) paintPersonPreview(canvas, ui.wardrobe.draft);
+}
+
+function renderWardrobeSelection() {
+  if (!ui.wardrobe) return;
+  const tabs = $("#look-tabs");
+  if (tabs) tabs.innerHTML = lookTabsHtml(ui.wardrobe.part);
+  const options = $("#look-options");
+  if (options) options.innerHTML = lookOptionsHtml(ui.wardrobe.part, ui.wardrobe.draft);
+  paintLookPreview();
+}
+
+function openWardrobe() {
+  const look = normalizeLook(store.getLook());
+  ui.wardrobe = { draft: { ...look }, part: "head" };
+  openModal(`
+    ${modalHead("今天想穿什么？", "WARDROBE")}
+    <div class="wardrobe">
+      <div class="wardrobe__preview">
+        <div class="wardrobe__preview-frame">
+          <canvas id="look-preview" width="180" height="220" role="img" aria-label="当前搭配的预览"></canvas>
+        </div>
+        <p>这身会出现在小屋、今日小灯和所有场景里。</p>
+      </div>
+      <div class="wardrobe__panel">
+        <div class="look-tabs" id="look-tabs" role="tablist">${lookTabsHtml("head")}</div>
+        <div class="look-options" id="look-options">${lookOptionsHtml("head", ui.wardrobe.draft)}</div>
+      </div>
+    </div>
+    <div class="wardrobe__foot">
+      <button class="text-btn" type="button" data-action="look-random">${icon("spark")} 随机一身</button>
+      <div class="form-actions__right">
+        <button class="pixel-btn pixel-btn--ghost" type="button" data-action="close-modal">先不换</button>
+        <button class="pixel-btn pixel-btn--gold" type="button" data-action="save-look">就穿这身</button>
+      </div>
+    </div>
+  `, { className: "modal--wardrobe", autofocus: false });
+  requestAnimationFrame(() => paintLookPreview());
+  window.setTimeout(() => $(".look-tab")?.focus({ preventScroll: true }), 90);
+}
+
+function selectLookTab(part) {
+  if (!ui.wardrobe || !LOOK_PARTS[part]) return;
+  ui.wardrobe.part = part;
+  audio.play("click");
+  renderWardrobeSelection();
+}
+
+function chooseLookOption(part, value) {
+  if (!ui.wardrobe || !LOOK_PARTS[part]?.some((option) => option.id === value)) return;
+  ui.wardrobe.draft[part] = value;
+  audio.play("click");
+  renderWardrobeSelection();
+}
+
+function randomizeLook() {
+  if (!ui.wardrobe) return;
+  ui.wardrobe.draft = randomLook();
+  audio.play("open");
+  renderWardrobeSelection();
+}
+
+function saveLook() {
+  if (!ui.wardrobe) return;
+  store.setLook(ui.wardrobe.draft);
+  ui.wardrobe = null;
+  closeModal();
+  audio.play("check");
+  refreshAll({ keepScroll: true });
+  toast("这身很好看。", { iconName: "spark", tone: "gold", duration: 2600 });
+}
+
+function refreshNavOnly() {
+  const stats = store.getStats();
+  const nav = $("#bottom-nav");
+  if (nav) {
+    nav.innerHTML = renderNav({
+      route: ui.route,
+      claimableCount: stats.claimableCount,
+      updateAvailable: ui.updateAvailable
+    });
+  }
+}
+
+function setUpdateStatus(text, isUpdate = false) {
+  const el = $("#update-status");
+  if (!el) return;
+  el.textContent = text;
+  el.classList.toggle("is-update", isUpdate);
+}
+
+async function runUpdateCheck(manual = true) {
+  if (ui.updateChecking) return;
+  ui.updateChecking = true;
+  const button = $('[data-action="check-update"]');
+  if (button) {
+    button.disabled = true;
+    button.classList.add("is-loading");
+    button.innerHTML = `${icon("refresh")} 正在看看…`;
+  }
+  const result = await checkForUpdate();
+  ui.updateChecking = false;
+  if (button) {
+    button.disabled = false;
+    button.classList.remove("is-loading");
+    button.innerHTML = `${icon("refresh")} 检查更新`;
+  }
+  if (result.info) {
+    ui.versionInfo = result.info;
+    ui.updateAvailable = result.state === "available";
+    refreshNavOnly();
+    if (result.state === "latest") setUpdateStatus(`已经是最新版 v${APP_VERSION}。`);
+  }
+  if (result.state === "available") {
+    setUpdateStatus(`发现新版本 v${result.info.version}，可以更新。`, true);
+    audio.play("open");
+    openUpdateModal(result.info);
+    return;
+  }
+  if (result.state === "latest") {
+    setUpdateStatus(`已经是最新版 v${APP_VERSION}。`);
+    if (manual) toast(`已经是最新版 v${APP_VERSION} 了。`, { iconName: "spark" });
+    return;
+  }
+  setUpdateStatus(result.message || "没有连上网络，稍后再试试。");
+  if (manual) toast(result.message || "没有连上网络，稍后再试试。", { iconName: "moon" });
+}
+
+async function maybeCheckUpdatesOnBoot() {
+  if (ui.updateChecking) return;
+  if (!store.getState().profile.onboarded) return;
+  if (navigator.onLine === false) return;
+  if (!shouldCheckOnBoot()) return;
+  ui.updateChecking = true;
+  const result = await checkForUpdate();
+  ui.updateChecking = false;
+  if (result.info) {
+    ui.versionInfo = result.info;
+    if (result.state === "latest") setUpdateStatus(`已经是最新版 v${APP_VERSION}。`);
+  }
+  if (result.state === "available") {
+    ui.updateAvailable = true;
+    refreshNavOnly();
+    setUpdateStatus(`发现新版本 v${result.info.version}，可以更新。`, true);
+    toast(`小屋有新版本 v${result.info.version}，去「小屋 → 版本与更新」看看。`, {
+      iconName: "spark",
+      tone: "gold",
+      duration: 4800
+    });
+  }
+}
+
+function openUpdateModal(info) {
+  const android = isAndroidShell();
+  const notes = (info.notes || []).map((note) => `<li>${esc(note)}</li>`).join("");
+  openModal(`
+    ${modalHead(`发现新版本 v${info.version}`, "UPDATE AVAILABLE")}
+    <div class="update-modal">
+      <p class="update-modal__title">${esc(info.title || "小屋又有新东西了")}</p>
+      <p class="update-modal__date">${esc(info.releasedAt || "")}</p>
+      <ul class="update-notes">${notes || "<li>这次更新带来了一些小变化。</li>"}</ul>
+      <p class="update-hint">${android
+        ? "下载后直接覆盖安装，记录会保存在这台设备里。"
+        : "更新会刷新页面，打卡记录不会丢失。"}</p>
+      <div class="form-actions">
+        <button class="text-btn" type="button" data-action="open-release">查看 Release ›</button>
+        <div class="form-actions__right">
+          <button class="pixel-btn pixel-btn--ghost" type="button" data-action="close-modal">稍后</button>
+          ${android
+            ? `<button class="pixel-btn pixel-btn--gold" type="button" data-action="download-update">${icon("download")} 去下载 APK</button>`
+            : `<button class="pixel-btn pixel-btn--gold" type="button" data-action="apply-update">${icon("refresh")} 更新并刷新</button>`}
+        </div>
+      </div>
+    </div>
+  `, { className: "modal--update" });
+}
+
+function applyUpdate() {
+  const button = $('[data-action="apply-update"]');
+  if (button) {
+    button.disabled = true;
+    button.innerHTML = `${icon("refresh")} 正在更新…`;
+  }
+  audio.play("check");
+  applyWebUpdate();
+}
+
+function downloadUpdate() {
+  const url = ui.versionInfo?.apkUrl || ui.versionInfo?.releaseUrl;
+  if (!url) {
+    toast("还没有找到下载地址，去 Release 页面看看吧。", { iconName: "moon" });
+    return;
+  }
+  const opened = openExternal(url);
+  toast(opened ? "正在打开下载页。安装时选择覆盖安装即可。" : "打开下载页失败，去 Release 页面看看吧。", {
+    iconName: "download",
+    duration: 3800
+  });
+}
+
+function openChangelog() {
+  const entries = CHANGELOG.map((entry) => ({ ...entry }));
+  if (ui.versionInfo && compareVersions(ui.versionInfo.version, entries[0]?.version || "0.0.0") > 0) {
+    entries.unshift({
+      version: ui.versionInfo.version,
+      date: ui.versionInfo.releasedAt || "",
+      title: ui.versionInfo.title || "最新版本",
+      items: ui.versionInfo.notes || []
+    });
+  }
+  openModal(`
+    ${modalHead("更新日志", "CHANGELOG")}
+    <div class="changelog-list">
+      ${entries.map((entry) => `
+        <article class="changelog-entry ${entry.version === APP_VERSION ? "is-current" : ""}">
+          <div class="changelog-head">
+            <span class="changelog-version">v${esc(entry.version)}</span>
+            <span class="changelog-date">${esc(entry.date || "")}</span>
+            ${entry.version === APP_VERSION ? '<span class="changelog-current">当前</span>' : ""}
+          </div>
+          <h3>${esc(entry.title || "")}</h3>
+          <ul>${(entry.items || []).map((item) => `<li>${esc(item)}</li>`).join("")}</ul>
+        </article>
+      `).join("")}
+    </div>
+    <p class="changelog-foot">当前版本 v${APP_VERSION} · 构建 ${APP_BUILD} · ${esc(platformLabel())}</p>
+  `, { className: "modal--changelog" });
 }
 
 function openConfirm({ title, body, confirmLabel = "确定", danger = false, onConfirm }) {
@@ -1370,6 +1828,9 @@ function bindGlobalEvents() {
   window.addEventListener("hashchange", () => {
     const route = parseRoute();
     if (route !== ui.route) transitionTo(route);
+  });
+  window.addEventListener("online", () => {
+    maybeCheckUpdatesOnBoot();
   });
   document.addEventListener("visibilitychange", () => {
     if (!document.hidden) {

@@ -3,6 +3,8 @@
  * A hand-drawn 384×216 canvas scene. No image assets, no dependencies.
  */
 
+import { drawPerson, DEFAULT_LOOK } from "./character.js";
+
 const W = 384;
 const H = 216;
 
@@ -664,15 +666,23 @@ function drawDust(ctx, now, reduced) {
   }
 }
 
-export function paintPortrait(canvas) {
+export function paintPortrait(canvas, look = DEFAULT_LOOK) {
   const ctx = canvas.getContext("2d");
   canvas.width = 96;
   canvas.height = 96;
   ctx.clearRect(0, 0, 96, 96);
   ctx.imageSmoothingEnabled = false;
   ctx.save();
-  ctx.translate(48 - 188, 92 - 188);
-  drawCharacter(ctx, 0, 0, false, 0, true, null);
+  ctx.translate(0, 0);
+  drawPerson(ctx, {
+    x: 48,
+    groundY: 92,
+    look,
+    now: 0,
+    reduced: true,
+    action: "idle",
+    holdMug: true
+  });
   ctx.restore();
 }
 
@@ -701,6 +711,7 @@ export class Scene {
     this.canvas.height = H;
     this.ctx.imageSmoothingEnabled = false;
     this.reducedMotion = options.motion === false;
+    this.look = options.look || DEFAULT_LOOK;
     this.done = Number(options.done) || 0;
     this.total = Number(options.total) || 0;
     this.mood = options.mood || null;
@@ -802,7 +813,18 @@ export class Scene {
     const pokeAge = this.pokeAt ? now - this.pokeAt : Infinity;
     const tilt = pokeAge < 700 && !this.reducedMotion ? (Math.sin(pokeAge * 0.03) > 0 ? 2 : -2) : 0;
 
-    drawCharacter(ctx, now, jump, happy, tilt, this.reducedMotion, this.mood);
+    drawPerson(ctx, {
+      x: 188,
+      groundY: 188,
+      look: this.look,
+      now,
+      jump,
+      action: happy ? "happy" : "idle",
+      mood: this.mood,
+      reduced: this.reducedMotion,
+      holdMug: !happy,
+      tilt
+    });
     drawCat(ctx, now, happy || pokeAge < 900, this.reducedMotion);
     drawDust(ctx, now, this.reducedMotion);
     drawFx(ctx, now, this.fx);
