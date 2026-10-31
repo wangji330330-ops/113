@@ -141,7 +141,8 @@ function createInitialState() {
       createdAt: now,
       onboarded: false,
       look: {},
-      avatar: ""
+      avatar: "",
+      avatarImage: ""
     },
     settings: {
       sound: true,
@@ -191,7 +192,10 @@ function sanitizeState(raw, { strict = false } = {}) {
       createdAt: profile.createdAt || base.profile.createdAt,
       onboarded: Boolean(profile.onboarded),
       look: profile.look && typeof profile.look === "object" ? profile.look : {},
-      avatar: typeof profile.avatar === "string" ? profile.avatar.slice(0, 24) : ""
+      avatar: typeof profile.avatar === "string" ? profile.avatar.slice(0, 24) : "",
+      avatarImage: typeof profile.avatarImage === "string" && profile.avatarImage.startsWith("data:image/")
+        ? profile.avatarImage.slice(0, 400000)
+        : ""
     },
     settings: {
       sound: settings.sound !== false,
@@ -284,6 +288,16 @@ export function setAvatar(id) {
   state.profile.avatar = String(id || "").slice(0, 24);
   persist();
   return state.profile.avatar;
+}
+
+export function setAvatarImage(dataUrl) {
+  state.profile.avatarImage = String(dataUrl || "").slice(0, 400000);
+  persist();
+  return state.profile.avatarImage;
+}
+
+export function getAvatarImage() {
+  return state.profile.avatarImage || "";
 }
 
 export function getAvatar() {

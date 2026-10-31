@@ -11,7 +11,6 @@ import {
   REWARD_ICON_LABELS,
   TODAY_SUBS
 } from "./data.js";
-import { avatarById, avatarSvg } from "./avatar.js";
 import { sceneSvg } from "./scene-art.js";
 import { PLACES, PLACE_CATEGORIES } from "./place-data.js";
 import { icon, iconTile } from "./icons.js";
@@ -92,6 +91,14 @@ export function renderNav({ route, claimableCount = 0, updateAvailable = false }
       </a>
     `;
   }).join("");
+}
+
+export function avatarMarkup(state, variant = "") {
+  const img = state?.profile?.avatarImage || "";
+  if (img && img.startsWith("data:image/")) {
+    return `<img class="avatar-img avatar-img--${variant}" src="${img}" alt="" draggable="false">`;
+  }
+  return `<span class="avatar-empty avatar-empty--${variant}" aria-hidden="true">${icon("user")}</span>`;
 }
 
 function todayChip(stats) {
@@ -190,8 +197,6 @@ export function renderToday(ctx) {
   const pct = overview.total ? Math.round((overview.doneCount / overview.total) * 100) : 0;
   const energy = overview.log?.energy || null;
   const note = overview.log?.note || "";
-  const avatar = avatarById(ctx.avatar);
-  const mood = energy === "low" ? "tired" : energy === "good" ? "happy" : "idle";
   const doneCopy = overview.allDone
     ? "都做完了。剩下的时间，随便你怎么用。"
     : overview.doneCount > 0
@@ -201,8 +206,8 @@ export function renderToday(ctx) {
   return `
     <section class="today-page">
       <header class="hero">
-        <button class="hero__avatar" type="button" data-action="poke-avatar" aria-label="和${esc(avatar.name)}说句话">
-          ${avatarSvg(avatar.id, { size: 104, mood })}
+        <button class="hero__avatar" type="button" data-action="poke-avatar" aria-label="点一下">
+          ${avatarMarkup(state, "hero")}
           <span class="hero__bubble" id="avatar-speech" aria-live="polite">${esc(speech || "")}</span>
         </button>
         <div class="hero__copy">
@@ -537,7 +542,7 @@ function placeSection(categoryId, places) {
   `;
 }
 
-function renderPlaceScene(place, speech, avatar = "") {
+function renderPlaceScene(place, speech, state = {}) {
   const category = PLACE_CATEGORIES[place.category];
   const hotspots = sceneHotspotMarkup(place, "place-hotspot");
   return `
@@ -557,13 +562,13 @@ function renderPlaceScene(place, speech, avatar = "") {
           ${sceneSvg(place.id, { className: "place-scene-art" })}
           <button class="place-actor" type="button" data-action="place-character" aria-label="和小人说句话"
             style="left:${((place.char?.x || 190) / 384 * 100).toFixed(2)}%;bottom:${(((216 - (place.char?.groundY || 188)) / 216) * 100).toFixed(2)}%">
-            ${avatarSvg(avatar, { size: 132, mood: "idle" })}
+            ${avatarMarkup(state, "actor")}
           </button>
           <div class="scene-top">
             <span class="scene-pill">${icon(place.icon)} ${esc(place.name)}</span>
             <span class="scene-pill scene-pill--level">${esc(place.sceneLabel)}</span>
           </div>
-          <button class="place-scene-hit" type="button" data-action="move-actor" aria-label="点场景里的空地，小人会走过去"></button>
+          <button class="place-scene-hit" type="button" data-action="place-character" aria-label="点场景里的小人，它会弹一下"></button>
           ${hotspots}
           <div class="scene-speech place-speech" id="place-speech" aria-live="polite">${esc(speech)}</div>
           <span class="scene-hint">点本子或场景里的东西</span>
@@ -586,7 +591,7 @@ function renderPlaceScene(place, speech, avatar = "") {
 
 export function renderPlaces({ state, activePlace = null, speech = "" }) {
   const place = activePlace ? PLACES.find((item) => item.id === activePlace) : null;
-  if (place) return renderPlaceScene(place, speech, state.profile.avatar);
+  if (place) return renderPlaceScene(place, speech, state);
   const home = PLACES.filter((item) => item.category === "home");
   const outdoor = PLACES.filter((item) => item.category === "outdoor");
   return `
@@ -921,7 +926,6 @@ export function renderMe({ state, stats, calendar, versionInfo = null, updateAva
   const nextLevelText = level.next
     ? `再攒 ${level.toNext} 微光，变成「${level.next.name}」。`
     : "你已经是一小片星河了。";
-  const avatar = avatarById(state.profile.avatar);
   const latest = CHANGELOG[0];
   const versionStatus = updateAvailable && versionInfo
     ? `发现新版本 v${versionInfo.version}，可以更新。`
@@ -942,7 +946,7 @@ export function renderMe({ state, stats, calendar, versionInfo = null, updateAva
       <div class="me-grid">
         <section class="panel profile-card">
           <button class="portrait-frame portrait-frame--button" type="button" data-action="open-wardrobe" aria-label="换一个形象">
-            ${avatarSvg(state.profile.avatar, { size: 96, mood: "idle" })}
+            ${avatarMarkup(state, "portrait")}
             <span class="portrait-status"></span>
             <span class="portrait-edit">换形象</span>
           </button>
@@ -953,7 +957,7 @@ export function renderMe({ state, stats, calendar, versionInfo = null, updateAva
               <button class="icon-btn" type="button" data-action="edit-name" aria-label="修改称呼">${icon("pen")}</button>
             </div>
             <p>${stats.totalDays ? `你已经在小屋出现过 ${stats.totalDays} 天。` : "今天，是你第一次推开小屋的门。"}</p>
-            <p class="look-summary" title="当前形象">${icon("user")} 形象 · ${esc(avatar.name)}</p>
+            <p class="look-summary" title="我的头像">${icon("user")} ${state.profile.avatarImage ? "用自己的图" : "还没换头像"}</p>
             <div class="level-line">
               <span>${icon("spark")} ${level.current.name}</span>
               <span>${stats.totalPoints} 微光</span>
@@ -1038,7 +1042,7 @@ export function renderMe({ state, stats, calendar, versionInfo = null, updateAva
             </button>
             <button class="setting-row" type="button" data-action="open-wardrobe">
               <span class="setting-row__icon">${icon("user")}</span>
-              <span class="setting-row__copy"><b>人物形象</b><small>Q 版大头，24 个可选，点一下就换</small></span>
+              <span class="setting-row__copy"><b>我的头像</b><small>选一张自己的图，只存在这台设备上</small></span>
               <span class="setting-arrow">${icon("right")}</span>
             </button>
             <button class="setting-row" type="button" data-action="go-places">

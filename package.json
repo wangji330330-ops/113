@@ -1,6 +1,6 @@
 {
   "name": "diary",
-  "version": "0.5.2",
+  "version": "0.5.3",
   "private": true,
   "description": "日记 · 一个不催你的日记本",
   "scripts": {

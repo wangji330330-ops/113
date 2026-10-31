@@ -1,15 +1,14 @@
 {
-  "version": "0.5.2",
-  "build": 8,
+  "version": "0.5.3",
+  "build": 9,
   "releasedAt": "2026-11-01",
-  "title": "大头重画，手机端顺一点",
+  "title": "头像换成你自己的图",
   "notes": [
-    "24 个头像重画成大头特写：头几乎占满画面，眼睛放大，只留一点肩膀。",
-    "修好点三条横杆后整屏发糊的问题。",
-    "打卡不再整页重刷，点勾时不再掉帧。",
-    "只有点角色本身才 Q 弹，只有点地面才会走过去。"
+    "「小屋 → 我的头像」可以选一张自己的图，只保存在这台设备上。",
+    "场景里不再自动走动，点角色只 Q 弹。",
+    "各页面选项之间放松了间距。"
   ],
   "webUrl": "https://wangji330330-ops.github.io/113/",
-  "apkUrl": "https://wangji330330-ops.github.io/113/download/diary-v0.5.2-debug.apk",
+  "apkUrl": "https://wangji330330-ops.github.io/113/download/diary-v0.5.3-debug.apk",
   "releaseUrl": "https://github.com/wangji330330-ops/113/releases"
 }

@@ -47,6 +47,7 @@ import {
   renderDiary,
   renderHabits,
   renderMe,
+  avatarMarkup,
   renderNav,
   renderPlaces,
   renderRewards,
@@ -57,8 +58,6 @@ import {
   conditionUnit,
   esc
 } from "./helpers.js";
-
-import { AVATARS, avatarSvg } from "./avatar.js";
 
 const ROUTES = new Set(["today", "places", "habits", "diary", "rewards", "me"]);
 const REDUCED_MOTION = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -504,14 +503,11 @@ function handleAction(action, el, event) {
     case "poke-avatar":
       pokeAvatar();
       break;
-    case "move-actor":
-      moveActor(el, event);
+    case "pick-avatar-file":
+      pickAvatarFile();
       break;
-    case "pick-avatar":
-      pickAvatar(el.dataset.avatar);
-      break;
-    case "save-avatar":
-      saveAvatar();
+    case "clear-avatar":
+      clearAvatar();
       break;
     case "poke-scene":
       pokeScene();
@@ -1568,54 +1564,56 @@ const AVATAR_LINES = [
   "不想说话，也可以只是坐着。"
 ];
 
-function avatarGridHtml(selected) {
-  return AVATARS.map((item) => `
-    <button class="avatar-choice ${item.id === selected ? "is-active" : ""}" type="button"
-      data-action="pick-avatar" data-avatar="${item.id}" aria-pressed="${item.id === selected}">
-      ${avatarSvg(item.id, { size: 78, mood: "idle" })}
-      <span class="avatar-choice__name">${esc(item.name)}</span>
-    </button>
-  `).join("");
+function pickAvatarFile() {
+  const input = document.createElement("input");
+  input.type = "file";
+  input.accept = "image/*";
+  input.style.cssText = "position:fixed;left:-9999px;top:0;width:1px;height:1px;opacity:0";
+  document.body.appendChild(input);
+  input.addEventListener("change", () => {
+    const file = input.files && input.files[0];
+    input.remove();
+    if (file) applyAvatarFile(file);
+  }, { once: true });
+  input.click();
 }
 
-function pickAvatar(id) {
-  ui.avatarPick = id;
-  const grid = $("#avatar-grid");
-  if (grid) grid.innerHTML = avatarGridHtml(id);
-  audio.play("click");
+function applyAvatarFile(file) {
+  if (!file.type || !file.type.startsWith("image/")) {
+    toast("选一张图片吧。", { iconName: "leaf" });
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = () => {
+    const img = new Image();
+    img.onload = () => {
+      const size = 256;
+      const canvas = document.createElement("canvas");
+      canvas.width = size;
+      canvas.height = size;
+      const ctx = canvas.getContext("2d");
+      const scale = Math.max(size / img.width, size / img.height);
+      const w = img.width * scale;
+      const h = img.height * scale;
+      ctx.drawImage(img, (size - w) / 2, (size - h) / 2, w, h);
+      store.setAvatarImage(canvas.toDataURL("image/jpeg", 0.86));
+      closeModal();
+      refreshAll({ keepScroll: true });
+      audio.play("check");
+      toast("换好了。", { iconName: "spark", tone: "gold", duration: 2400 });
+    };
+    img.onerror = () => toast("这张图打不开，换一张试试。", { iconName: "leaf" });
+    img.src = String(reader.result || "");
+  };
+  reader.onerror = () => toast("读不到这张图。", { iconName: "leaf" });
+  reader.readAsDataURL(file);
 }
 
-function saveAvatar() {
-  store.setAvatar(ui.avatarPick || "");
-  ui.avatarPick = null;
+function clearAvatar() {
+  store.setAvatarImage("");
   closeModal();
-  audio.play("check");
   refreshAll({ keepScroll: true });
-  toast("换好了。", { iconName: "spark", tone: "gold", duration: 2400 });
-}
-
-function moveActor(el, event) {
-  if (!el || !event) return;
-  const frame = el.closest(".place-frame");
-  if (!frame) return;
-  const actor = frame.querySelector(".place-actor");
-  if (!actor) return;
-  const rect = frame.getBoundingClientRect();
-  if (!rect.width) return;
-  const ratio = (event.clientX - rect.left) / rect.width;
-  const depth = (event.clientY - rect.top) / rect.height;
-  if (depth < 0.62) return;
-  const next = Math.min(0.9, Math.max(0.1, ratio));
-  const prev = parseFloat(actor.style.left) || 50;
-  if (Math.abs(next * 100 - prev) < 4) return;
-  actor.classList.toggle("is-flip", next < prev);
-  actor.style.left = (next * 100).toFixed(2) + "%";
-  actor.classList.remove("is-walking");
-  void actor.offsetWidth;
-  actor.classList.add("is-walking");
-  window.clearTimeout(moveActor.timer);
-  moveActor.timer = window.setTimeout(() => actor.classList.remove("is-walking"), 620);
-  audio.play("nav");
+  toast("已经换回默认的了。", { iconName: "leaf" });
 }
 
 function popActor() {
@@ -1639,15 +1637,17 @@ function pokeAvatar() {
 }
 
 function openWardrobe() {
-  const current = store.getAvatar() || AVATARS[0].id;
-  ui.avatarPick = current;
+  const has = Boolean(store.getAvatarImage());
   openModal(`
-    ${modalHead("挑一个形象", "AVATAR")}
-    <p class="modal-sub">它会出现在今天、日记和走走里。随时可以再来换。</p>
-    <div class="avatar-grid" id="avatar-grid">${avatarGridHtml(current)}</div>
+    ${modalHead("我的头像", "AVATAR")}
+    <p class="modal-sub">选一张你喜欢的图。它只保存在这台设备上，不会上传，也不进导出备份。</p>
+    <div class="avatar-preview">${avatarMarkup(store.getState(), "preview")}</div>
     <div class="form-actions">
-      <button class="pixel-btn pixel-btn--ghost" type="button" data-action="close-modal">先不换</button>
-      <button class="pixel-btn pixel-btn--gold" type="button" data-action="save-avatar">就用这个</button>
+      <button class="text-btn" type="button" data-action="clear-avatar"${has ? "" : " disabled"}>恢复默认</button>
+      <div class="form-actions__right">
+        <button class="pixel-btn pixel-btn--ghost" type="button" data-action="close-modal">关闭</button>
+        <button class="pixel-btn pixel-btn--gold" type="button" data-action="pick-avatar-file">${has ? "换一张" : "选一张图"}</button>
+      </div>
     </div>
   `, { className: "modal--avatar", autofocus: false });
 }

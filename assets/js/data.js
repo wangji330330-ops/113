@@ -1,9 +1,21 @@
-export const APP_VERSION = "0.5.2";
-export const APP_BUILD = 8;
+export const APP_VERSION = "0.5.3";
+export const APP_BUILD = 9;
 export const APP_RELEASED_AT = "2026-11-01";
 export const STORE_KEY = "glimmer-nook:v1";
 
 export const CHANGELOG = [
+  {
+    version: "0.5.3",
+    date: "2026-11-01",
+    title: "头像换成你自己的图",
+    items: [
+      "删掉内置的 24 个自绘头像，改成在「小屋 → 我的头像」里选一张自己的图。",
+      "图片只缩到 256×256、只保存在这台设备上，不上传，也不进导出备份。",
+      "场景里不再点一下就走来走去；点角色只会 Q 弹，位置保持不动。",
+      "各页面选项之间放松了间距（侧栏、设置行、日记标签、打卡行、能量三选一）。",
+      "Android 版状态栏改成浅色，选图用的是系统相册。"
+    ]
+  },
   {
     version: "0.5.2",
     date: "2026-11-01",
