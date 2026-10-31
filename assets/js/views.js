@@ -137,7 +137,7 @@ function renderTaskList(overview) {
           <b>${esc(habit.name)}</b>
           <small>${effort.label} · +${effort.points} 微光</small>
         </span>
-        <span class="task-state">${done ? "已点亮" : `+${effort.points}`}</span>
+        <span class="task-state" data-points="+${effort.points}">${done ? "已点亮" : `+${effort.points}`}</span>
       </button>
     `;
   }).join("");

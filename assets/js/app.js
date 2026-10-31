@@ -799,6 +799,7 @@ function leavePlace() {
 }
 
 function pokePlaceCharacter() {
+  popActor();
   const place = getPlace(ui.activePlace);
   ui.placeScene?.poke();
   sayPlace(pickLine(place.charLines));
@@ -843,7 +844,7 @@ function toggleHabit(id, el) {
     audio.play("check");
     if (overview.allDone) {
       window.setTimeout(() => audio.play("reward"), 220);
-      burstConfetti(18);
+      burstConfetti(12);
     }
   } else {
     audio.play("undo");
@@ -855,12 +856,42 @@ function toggleHabit(id, el) {
     floatPoints(x, y, result.completed ? `+${result.points} 微光` : `-${result.points} 微光`, result.completed ? "gold" : "muted");
   }
 
-  refreshAll({
-    celebrate: result.completed,
-    keepScroll: true,
-    focus: `[data-action="toggle-habit"][data-id="${id}"]`
-  });
+  syncTodayAfterToggle(id, el, result);
   notifyUnlocked(result.unlocked);
+}
+
+function syncTodayAfterToggle(id, el, result) {
+  const done = Boolean(result.completed);
+  const overview = store.getTodayOverview();
+  const stats = store.getStats();
+  const row = el && el.isConnected
+    ? el
+    : $(`[data-action="toggle-habit"][data-id="${id}"]`);
+  if (row) {
+    row.classList.toggle("is-done", done);
+    row.setAttribute("aria-pressed", String(done));
+    const check = row.querySelector(".task-check");
+    if (check) check.innerHTML = done ? icon("check") : "";
+    const state = row.querySelector(".task-state");
+    if (state) state.textContent = done ? "已点亮" : (state.dataset.points || "");
+  }
+  const head = $(".task-panel .section-head h2");
+  if (head) head.textContent = `${overview.doneCount} / ${overview.total || 0} 件`;
+  const fill = $(".task-panel .pixel-progress > span");
+  if (fill) {
+    const pct = overview.total ? Math.round((overview.doneCount / overview.total) * 100) : 0;
+    fill.style.width = `${pct}%`;
+  }
+  const foot = $(".task-panel .task-footnote");
+  if (foot) {
+    foot.textContent = overview.allDone
+      ? "都做完了。剩下的时间，随便你怎么用。"
+      : overview.doneCount > 0
+        ? `已经做完 ${overview.doneCount} 件，剩下的不着急。`
+        : "从最小的一件开始。做不动也没关系。";
+  }
+  const points = $(".app-bar .top-points b");
+  if (points) points.textContent = stats.totalPoints;
 }
 
 function toggleArchive(id) {
@@ -1572,8 +1603,11 @@ function moveActor(el, event) {
   const rect = frame.getBoundingClientRect();
   if (!rect.width) return;
   const ratio = (event.clientX - rect.left) / rect.width;
+  const depth = (event.clientY - rect.top) / rect.height;
+  if (depth < 0.62) return;
   const next = Math.min(0.9, Math.max(0.1, ratio));
   const prev = parseFloat(actor.style.left) || 50;
+  if (Math.abs(next * 100 - prev) < 4) return;
   actor.classList.toggle("is-flip", next < prev);
   actor.style.left = (next * 100).toFixed(2) + "%";
   actor.classList.remove("is-walking");

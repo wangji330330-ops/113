@@ -2010,3 +2010,59 @@ textarea {
 .modal-root {
   background: transparent;
 }
+
+
+/* ==========================================================================
+   性能与渲染修复：Android WebView 上 backdrop-filter 会让画面一直糊
+   ========================================================================== */
+
+.app-bar,
+.nav-scrim,
+.modal-backdrop,
+.modal-root,
+.place-card__badge,
+.place-card__enter,
+.scene-pill,
+.side-nav,
+.side-brand {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+
+.app-bar {
+  background: rgba(253, 248, 243, .97);
+}
+
+.nav-scrim {
+  background: rgba(74, 63, 69, .42);
+}
+
+.modal-backdrop {
+  background: rgba(74, 63, 69, .38);
+}
+
+.float-points,
+.confetti-layer i {
+  will-change: transform, opacity;
+  transform: translateZ(0);
+}
+
+.task-row,
+.task-check {
+  transition: background .12s ease, border-color .12s ease;
+}
+
+/* ==========================================================================
+   只让角色本身弹，文字不要弹
+   ========================================================================== */
+
+.hero__bubble.is-bump,
+.scene-speech.is-bump,
+.say-bump {
+  animation: none !important;
+}
+
+.hero__avatar svg,
+.place-actor svg {
+  transition: transform .18s ease;
+}
