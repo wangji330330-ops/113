@@ -110,6 +110,13 @@
   .img-row figure { margin: 0; text-align: center; }
   .img-row img { display: block; border-radius: 14px; background: rgba(91, 74, 94, .04); }
   .img-row figcaption { font-size: 11px; color: var(--ink-soft); margin-top: 6px; }
+  .snippet {
+    margin: 16px 0 0; padding: 14px 16px; overflow-x: auto;
+    background: #fffdfa; border: 1px solid rgba(91, 74, 94, .12); border-radius: 14px;
+    font-family: ui-monospace, "Cascadia Code", Consolas, monospace; font-size: 12px; line-height: 1.8;
+    color: #6f5b74;
+  }
+  .snippet b { color: #c47389; font-weight: 600; }
 
   footer {
     max-width: 1320px; margin: 48px auto 0;
@@ -189,7 +196,14 @@
 
 <footer>
   原创角色：发型 × 发色 × 眼睛 × 肤色 × 服装 × 配饰 参数化组合，不含任何既有动漫 / 游戏角色。<br>
-  背景保持透明，由 App 端自行添加。描边 <code>#5b4a5e</code>，无 <code>&lt;style&gt;</code>，渐变 id 逐条唯一。
+  背景保持透明，由 App 端自行添加。描边 <code>#5b4a5e</code>，无 <code>&lt;style&gt;</code>，渐变 id 逐条唯一。<br>
+  <b>本地打开提示：</b>本页通过 ES module 引入 <code>../assets/js/avatar.js</code>，浏览器不允许 <code>file://</code> 加载模块；
+  请用本地 HTTP 服务打开，或给 Chrome 加 <code>--allow-file-access-from-files</code>。
+  <pre class="snippet"><code>import { AVATARS, avatarSvg, avatarDataUri, avatarById } from "./assets/js/avatar.js";
+
+el.innerHTML = avatarSvg("a01", { size: 40, mood: "happy" });
+img.src = avatarDataUri("a01", { size: 160 });
+const who = avatarById("a24");   // 找不到时回退 AVATARS[0]</code></pre>
 </footer>
 
 <script>
@@ -219,6 +233,13 @@ const MOODS = [
 ];
 
 const byteLen = (s) => new TextEncoder().encode(s).length;
+
+// 体积统计（按 idle 大图计，放在渲染之前以拿到冷启动尺寸）
+let total = 0;
+for (const avatar of AVATARS) total += byteLen(avatarSvg(avatar.config, { size: 120 }));
+document.getElementById("stat-count").textContent = String(AVATARS.length);
+document.getElementById("stat-bytes").textContent = `${(total / 1024).toFixed(1)} KB`;
+document.getElementById("stat-avg").textContent = `${(total / AVATARS.length / 1024).toFixed(2)} KB`;
 
 function card(avatar, size) {
   const el = document.createElement("article");
@@ -264,26 +285,19 @@ for (const avatar of AVATARS) {
 
 // data URI 验证
 const imgRow = document.getElementById("img-row");
-for (const avatar of AVATARS.slice(0, 6)) {
+const imgMoods = ["idle", "happy", "tired", "sad"];
+for (const [i, avatar] of AVATARS.slice(0, 12).entries()) {
   const fig = document.createElement("figure");
   const img = new Image();
   img.width = 64;
   img.height = 64;
   img.alt = avatar.name;
-  img.src = avatarDataUri(avatar.config, { size: 64, mood: avatar.id === "a02" ? "happy" : "idle" });
+  img.src = avatarDataUri(avatar.config, { size: 64, mood: imgMoods[i % 4] });
   const cap = document.createElement("figcaption");
-  cap.textContent = `${avatar.name} · ${avatar.id}`;
+  cap.textContent = `${avatar.name} · ${imgMoods[i % 4]}`;
   fig.append(img, cap);
   imgRow.appendChild(fig);
 }
-
-// 体积统计（按 idle 大图计）
-let total = 0;
-for (const avatar of AVATARS) total += byteLen(avatarSvg(avatar.config, { size: 120 }));
-const kb = (total / 1024).toFixed(1);
-document.getElementById("stat-count").textContent = String(AVATARS.length);
-document.getElementById("stat-bytes").textContent = `${kb} KB`;
-document.getElementById("stat-avg").textContent = `${(total / AVATARS.length / 1024).toFixed(2)} KB`;
 
 // 自检：确保 API 正常
 if (AVATAR_IDS.length !== AVATARS.length) throw new Error("AVATAR_IDS 长度不一致");

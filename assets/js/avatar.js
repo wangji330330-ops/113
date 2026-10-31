@@ -193,10 +193,6 @@ function mix(hex, target, t) {
 const lighten = (hex, t) => mix(hex, [255, 255, 255], t);
 const darken = (hex, t) => mix(hex, [28, 20, 32], t);
 
-function pick(table, key, fallback) {
-  return Object.prototype.hasOwnProperty.call(table, key) ? table[key] : fallback;
-}
-
 function normalizeConfig(raw) {
   let src = raw;
   if (src && typeof src === "object" && src.config && typeof src.config === "object") src = src.config;
@@ -259,20 +255,16 @@ function hairBackMarkup(cfg, hair) {
   }
 }
 
-function hairFrontMarkup(cfg, hair, accent) {
+function hairFrontMarkup(cfg, hair) {
   const d = HAIR_FRONTS[cfg.hairStyle] || HAIR_FRONTS.bob;
-  let extra = "";
-  if (cfg.hairStyle === "spiky") {
-    extra = `<path d="M39 12L46 3 51 11Z" fill="${hair.base}"/><path d="M54 10L60 1 66 9Z" fill="${hair.base}"/><path d="M68 11L76 4 79 12Z" fill="${hair.base}"/>`;
-  }
   const long = cfg.hairStyle === "long" || cfg.hairStyle === "wavy" || cfg.hairStyle === "braid" || cfg.hairStyle === "hime";
   const strands = long
     ? `<path d="M31.5 46C30.5 54 31.5 62 33 68M88.5 46C89.5 54 88.5 62 87 68" fill="none" stroke="${hair.dark}" stroke-width="1.4" opacity=".4"/>`
     : cfg.hairStyle === "side"
       ? `<path d="M31.5 46C30.5 54 31.5 60 32.5 65" fill="none" stroke="${hair.dark}" stroke-width="1.4" opacity=".4"/>`
       : "";
-  const tie = `<path d="M37 24C40 15 49 9 58 7.6" fill="none" stroke="${hair.light}" stroke-width="2.3" opacity=".6"/>`;
-  return `<path d="${d}" fill="${hair.base}"/>${extra}${strands}${tie}`;
+  const sheen = `<path d="M37 24C40 15 49 9 58 7.6" fill="none" stroke="${hair.light}" stroke-width="2.3" opacity=".6"/>`;
+  return `<path d="${d}" fill="${hair.base}"/>${strands}${sheen}`;
 }
 
 function hairExtrasMarkup(cfg, hair, accent) {
@@ -346,7 +338,7 @@ function bodyMarkup(cfg, skin, cloth, gradId) {
 /* ------------------------------ 脸 ------------------------------ */
 
 function eyeDefs(cfg, iris, mood, id) {
-  const style = EYE_STYLES[cfg.eye];
+  const style = EYE_STYLES[mood === "sad" ? "droop" : cfg.eye];
   let inner;
   if (mood === "happy") {
     inner = `<path d="M-6.8 2.4C-4-2.4 4-2.4 6.8 2.4" stroke-width="2.5"/>`;
@@ -420,7 +412,7 @@ function faceMarkup(cfg, skin, hair, iris, mood, eyeId) {
 
 /* ------------------------------ 配饰 ------------------------------ */
 
-function accessoryMarkup(cfg, skin, hair, cloth) {
+function accessoryMarkup(cfg, skin, hair) {
   const a = cfg.accent;
   const dark = darken(a, 0.22);
   switch (cfg.accessory) {
@@ -514,7 +506,7 @@ export function avatarSvg(configOrId, { size = 120, mood = "idle", className = "
 
   const body = bodyMarkup(cfg, skin, cloth, gradId);
   const face = faceMarkup(cfg, skin, hair, iris, m, eyeId);
-  const inner = `<defs><linearGradient id="${gradId}" x2="0" y2="1"><stop stop-color="${cloth.light}"/><stop offset="1" stop-color="${cloth.base}"/></linearGradient>${eyeDef}</defs><g fill="none" stroke="${OUTLINE}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">${hairBackMarkup(cfg, hair)}${body}${face}${hairFrontMarkup(cfg, hair, cfg.accent)}${hairExtrasMarkup(cfg, hair, cfg.accent)}${cfg.hairStyle === "braid" ? braidMarkup(hair, cfg.accent) : ""}${accessoryMarkup(cfg, skin, hair, cloth)}</g>`;
+  const inner = `<defs><linearGradient id="${gradId}" x2="0" y2="1"><stop stop-color="${cloth.light}"/><stop offset="1" stop-color="${cloth.base}"/></linearGradient>${eyeDef}</defs><g fill="none" stroke="${OUTLINE}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">${hairBackMarkup(cfg, hair)}${body}${face}${hairFrontMarkup(cfg, hair)}${hairExtrasMarkup(cfg, hair, cfg.accent)}${cfg.hairStyle === "braid" ? braidMarkup(hair, cfg.accent) : ""}${accessoryMarkup(cfg, skin, hair)}</g>`;
 
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="${px}" height="${px}"${cls} aria-hidden="true">${compact(inner)}</svg>`;
 }

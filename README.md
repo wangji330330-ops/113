@@ -17,7 +17,7 @@
 </p>
 
 - 网页版：<https://wangji330330-ops.github.io/113/>
-- [GitHub Release](https://github.com/wangji330330-ops/113/releases)
+- Android：[下载调试 APK v0.5.1](https://wangji330330-ops.github.io/113/download/diary-v0.5.1-debug.apk)（约 1.5 MB，Android 7.0+）
 - [更新日志](CHANGELOG.md)
 
 ## 现在有什么
@@ -118,14 +118,14 @@ assets/
   js/audio.js               WebAudio 音效合成
   js/data.js                预设内容、文案、等级、更新历史
   js/helpers.js             日期、转义、格式化小工具
-  fonts/                    旧的像素字体（v0.5 起不再加载）
   icons/                    应用图标（v0.5 重新生成）
 android/                    Android WebView 工程
 scripts/                    本地服务器、图标生成、资源同步、构建模板
-docs/                       README 预览图与形象/场景预览页
+download/                   APK 与校验文件
+docs/                       README 预览图与形象预览页
 ```
 
-> `character.js` / `scene.js` / `places.js` 是 v0.4 的 Canvas 像素角色与场景，v0.5 起不再使用，保留是为了不打断旧缓存。
+> v0.4 的像素角色与 Canvas 场景（`character.js` / `scene.js` / `places.js`）和像素字体已在 v0.5.1 删除。
 
 ## 数据说明
 

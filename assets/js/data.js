@@ -1,9 +1,19 @@
-export const APP_VERSION = "0.5.0";
-export const APP_BUILD = 6;
-export const APP_RELEASED_AT = "2026-10-31";
+export const APP_VERSION = "0.5.1";
+export const APP_BUILD = 7;
+export const APP_RELEASED_AT = "2026-11-01";
 export const STORE_KEY = "glimmer-nook:v1";
 
 export const CHANGELOG = [
+  {
+    version: "0.5.1",
+    date: "2026-11-01",
+    title: "收拾干净，打包 APK",
+    items: [
+      "删掉 v0.4 留下的像素角色与 Canvas 场景代码（character.js / scene.js / places.js）和像素字体文件。",
+      "安装包从 2.3 MB 降到 1.5 MB，网页版少加载约 300 KB。",
+      "重新打包 Android APK：v0.5.1 debug，可直接覆盖安装 v0.4.0。"
+    ]
+  },
   {
     version: "0.5.0",
     date: "2026-10-31",

@@ -19,8 +19,6 @@ import {
 import * as store from "./store.js";
 import { icon } from "./icons.js";
 import { audio } from "./audio.js";
-import { paintPortrait } from "./scene.js";
-import { PlaceScene, paintPlacePreview } from "./places.js";
 import { PLACES, getPlace } from "./place-data.js";
 import {
   ChatError,
@@ -35,12 +33,6 @@ import {
   sendChatMessage
 } from "./chat.js";
 import { generateLocalReply } from "./companion.js";
-import {
-  LOOK_PARTS,
-  normalizeLook,
-  paintPersonPreview,
-  randomLook
-} from "./character.js";
 import {
   applyWebUpdate,
   checkForUpdate,
@@ -75,8 +67,6 @@ const now = new Date();
 const ui = {
   route: "today",
   homePlace: null,
-  scene: null,
-  placeScene: null,
   activePlace: null,
   placeSpeech: "",
   placeSpeechUntil: 0,
@@ -287,46 +277,14 @@ function renderPage({ focusPage = false, animatePage = true } = {}) {
 }
 
 function bindPage() {
-  const look = store.getLook();
   if (ui.route === "today") {
-    const canvas = $("#scene-canvas");
-    const overview = store.getTodayOverview();
-    if (canvas) {
-      ui.scene = new PlaceScene(canvas, {
-        place: getHomePlace(),
-        mood: overview.log?.energy || null,
-        look,
-        motion: store.getState().settings.motion && !REDUCED_MOTION
-      });
-      if (ui.pendingCelebrate) {
-        ui.pendingCelebrate = false;
-        window.setTimeout(() => ui.scene?.celebrate(), 60);
-      }
+    if (ui.pendingCelebrate) {
+      ui.pendingCelebrate = false;
+      popActor();
     }
     startIdleSpeech();
   } else if (ui.route === "places") {
-    const placeCanvas = $("#place-canvas");
-    if (placeCanvas && ui.activePlace) {
-      ui.placeScene = new PlaceScene(placeCanvas, {
-        place: getPlace(ui.activePlace),
-        look,
-        motion: store.getState().settings.motion && !REDUCED_MOTION
-      });
-    } else {
-      const token = (ui.previewToken += 1);
-      const canvases = $$("[data-place-preview]");
-      let index = 0;
-      const paintNext = () => {
-        if (token !== ui.previewToken || ui.route !== "places" || ui.activePlace) return;
-        const end = Math.min(index + 3, canvases.length);
-        for (; index < end; index += 1) {
-          const canvas = canvases[index];
-          if (canvas && canvas.isConnected) paintPlacePreview(canvas, canvas.dataset.placePreview, look);
-        }
-        if (index < canvases.length) window.requestAnimationFrame(paintNext);
-      };
-      window.requestAnimationFrame(paintNext);
-    }
+    // 场景现在是 SVG，不再需要 canvas 绘制
   } else if (ui.route === "diary") {
     if (ui.diaryTab === "chat") {
       window.requestAnimationFrame(() => {
@@ -345,23 +303,12 @@ function bindPage() {
         ui.chatFocus = false;
       });
     }
-  } else if (ui.route === "me") {
-    const portrait = $("#portrait-canvas");
-    if (portrait) paintPortrait(portrait, look);
   }
 }
 
 function cleanupPage() {
   flushNote();
   ui.previewToken += 1;
-  if (ui.scene) {
-    ui.scene.destroy();
-    ui.scene = null;
-  }
-  if (ui.placeScene) {
-    ui.placeScene.destroy();
-    ui.placeScene = null;
-  }
   if (ui.idleTimer) {
     window.clearInterval(ui.idleTimer);
     ui.idleTimer = null;
@@ -598,18 +545,6 @@ function handleAction(action, el, event) {
     case "open-wardrobe":
       audio.play("click");
       openWardrobe();
-      break;
-    case "look-tab":
-      selectLookTab(el.dataset.part);
-      break;
-    case "look-choice":
-      chooseLookOption(el.dataset.part, el.dataset.value);
-      break;
-    case "look-random":
-      randomizeLook();
-      break;
-    case "save-look":
-      saveLook();
       break;
     case "check-update":
       runUpdateCheck(true);
@@ -1594,52 +1529,6 @@ function openNameModal() {
   `, { className: "modal--form" });
 }
 
-const LOOK_TABS = [
-  ["head", "头"],
-  ["face", "面"],
-  ["body", "身"],
-  ["legs", "腿"],
-  ["shoes", "鞋"]
-];
-
-function lookOptionsHtml(part, draft) {
-  const options = LOOK_PARTS[part] || [];
-  return options.map((option) => {
-    const active = draft[part] === option.id;
-    return `
-      <button class="look-choice ${active ? "is-active" : ""}" type="button"
-        data-action="look-choice" data-part="${part}" data-value="${option.id}"
-        aria-pressed="${active}">
-        <span class="look-choice__swatch" style="--swatch:${option.swatch}"></span>
-        <span class="look-choice__copy"><b>${esc(option.name)}</b><small>${esc(option.desc)}</small></span>
-        <span class="look-choice__check">${active ? icon("check") : ""}</span>
-      </button>
-    `;
-  }).join("");
-}
-
-function lookTabsHtml(part) {
-  return LOOK_TABS.map(([id, label]) => `
-    <button class="look-tab ${id === part ? "is-active" : ""}" type="button"
-      role="tab" aria-selected="${id === part}" data-action="look-tab" data-part="${id}">${label}</button>
-  `).join("");
-}
-
-function paintLookPreview() {
-  if (!ui.wardrobe) return;
-  const canvas = $("#look-preview");
-  if (canvas) paintPersonPreview(canvas, ui.wardrobe.draft);
-}
-
-function renderWardrobeSelection() {
-  if (!ui.wardrobe) return;
-  const tabs = $("#look-tabs");
-  if (tabs) tabs.innerHTML = lookTabsHtml(ui.wardrobe.part);
-  const options = $("#look-options");
-  if (options) options.innerHTML = lookOptionsHtml(ui.wardrobe.part, ui.wardrobe.draft);
-  paintLookPreview();
-}
-
 const AVATAR_LINES = [
   "今天也不用很厉害。",
   "写一句就好，哪怕只有三个字。",
@@ -1727,37 +1616,6 @@ function openWardrobe() {
       <button class="pixel-btn pixel-btn--gold" type="button" data-action="save-avatar">就用这个</button>
     </div>
   `, { className: "modal--avatar", autofocus: false });
-}
-
-function selectLookTab(part) {
-  if (!ui.wardrobe || !LOOK_PARTS[part]) return;
-  ui.wardrobe.part = part;
-  audio.play("click");
-  renderWardrobeSelection();
-}
-
-function chooseLookOption(part, value) {
-  if (!ui.wardrobe || !LOOK_PARTS[part]?.some((option) => option.id === value)) return;
-  ui.wardrobe.draft[part] = value;
-  audio.play("click");
-  renderWardrobeSelection();
-}
-
-function randomizeLook() {
-  if (!ui.wardrobe) return;
-  ui.wardrobe.draft = randomLook();
-  audio.play("open");
-  renderWardrobeSelection();
-}
-
-function saveLook() {
-  if (!ui.wardrobe) return;
-  store.setLook(ui.wardrobe.draft);
-  ui.wardrobe = null;
-  closeModal();
-  audio.play("check");
-  refreshAll({ keepScroll: true });
-  toast("这身很好看。", { iconName: "spark", tone: "gold", duration: 2600 });
 }
 
 function refreshNavOnly() {

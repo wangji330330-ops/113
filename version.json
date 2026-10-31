@@ -1,16 +1,14 @@
 {
-  "version": "0.5.0",
-  "build": 6,
-  "releasedAt": "2026-10-31",
-  "title": "改名日记，换上 Q 版大头",
+  "version": "0.5.1",
+  "build": 7,
+  "releasedAt": "2026-11-01",
+  "title": "收拾干净，打包 APK",
   "notes": [
-    "应用改名为「日记」：一个不催你的日记本。",
-    "24 个原创 Q 版大头形象可选，点它会说一句话；原来的像素小人换装已经去掉。",
-    "13 个场景重画成柔和插画，大头会站在场景里，点场景里的东西会有反应。",
-    "导航改成左侧竖条：电脑上常驻，手机上用三条横杆打开。",
-    "去掉像素字体，换成浅色奶油配色和柔和线条图标。"
+    "删掉 v0.4 留下的像素角色与场景代码，安装包从 2.3 MB 降到 1.5 MB。",
+    "重新打包 Android APK，可以直接覆盖安装旧版。",
+    "界面和功能跟 0.5.0 一致：Q 版大头、13 个手绘场景、左侧竖条导航。"
   ],
   "webUrl": "https://wangji330330-ops.github.io/113/",
-  "apkUrl": "https://github.com/wangji330330-ops/113/releases",
+  "apkUrl": "https://wangji330330-ops.github.io/113/download/diary-v0.5.1-debug.apk",
   "releaseUrl": "https://github.com/wangji330330-ops/113/releases"
 }

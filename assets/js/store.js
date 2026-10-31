@@ -8,7 +8,6 @@ import {
   CONDITION_TYPES,
   levelFor
 } from "./data.js";
-import { DEFAULT_LOOK, normalizeLook } from "./character.js";
 
 const MAX_DONE_PER_DAY = 60;
 
@@ -141,7 +140,7 @@ function createInitialState() {
       name: "",
       createdAt: now,
       onboarded: false,
-      look: { ...DEFAULT_LOOK },
+      look: {},
       avatar: ""
     },
     settings: {
@@ -191,7 +190,7 @@ function sanitizeState(raw, { strict = false } = {}) {
       name: clampText(profile.name, 20),
       createdAt: profile.createdAt || base.profile.createdAt,
       onboarded: Boolean(profile.onboarded),
-      look: normalizeLook(profile.look),
+      look: profile.look && typeof profile.look === "object" ? profile.look : {},
       avatar: typeof profile.avatar === "string" ? profile.avatar.slice(0, 24) : ""
     },
     settings: {
@@ -272,13 +271,13 @@ export function setProfileName(name) {
 }
 
 export function setLook(look) {
-  state.profile.look = normalizeLook(look);
+  state.profile.look = look && typeof look === "object" ? look : {};
   persist();
   return state.profile.look;
 }
 
 export function getLook() {
-  return normalizeLook(state.profile.look);
+  return state.profile.look || {};
 }
 
 export function setAvatar(id) {
