@@ -1,14 +1,15 @@
 {
-  "version": "0.5.1",
-  "build": 7,
+  "version": "0.5.2",
+  "build": 8,
   "releasedAt": "2026-11-01",
-  "title": "收拾干净，打包 APK",
+  "title": "大头重画，手机端顺一点",
   "notes": [
-    "删掉 v0.4 留下的像素角色与场景代码，安装包从 2.3 MB 降到 1.5 MB。",
-    "重新打包 Android APK，可以直接覆盖安装旧版。",
-    "界面和功能跟 0.5.0 一致：Q 版大头、13 个手绘场景、左侧竖条导航。"
+    "24 个头像重画成大头特写：头几乎占满画面，眼睛放大，只留一点肩膀。",
+    "修好点三条横杆后整屏发糊的问题。",
+    "打卡不再整页重刷，点勾时不再掉帧。",
+    "只有点角色本身才 Q 弹，只有点地面才会走过去。"
   ],
   "webUrl": "https://wangji330330-ops.github.io/113/",
-  "apkUrl": "https://wangji330330-ops.github.io/113/download/diary-v0.5.1-debug.apk",
+  "apkUrl": "https://wangji330330-ops.github.io/113/download/diary-v0.5.2-debug.apk",
   "releaseUrl": "https://github.com/wangji330330-ops/113/releases"
 }

@@ -1,5 +1,5 @@
 /* 日记 offline cache */
-const CACHE = "diary-v0.5.1";
+const CACHE = "diary-v0.5.2";
 const FONT_CSS = "./assets/css/theme-v2.css";
 const CORE = [
   "./",

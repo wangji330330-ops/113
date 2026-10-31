@@ -1,9 +1,21 @@
-export const APP_VERSION = "0.5.1";
-export const APP_BUILD = 7;
+export const APP_VERSION = "0.5.2";
+export const APP_BUILD = 8;
 export const APP_RELEASED_AT = "2026-11-01";
 export const STORE_KEY = "glimmer-nook:v1";
 
 export const CHANGELOG = [
+  {
+    version: "0.5.2",
+    date: "2026-11-01",
+    title: "大头重画，手机端顺一点",
+    items: [
+      "24 个头像重画成大头特写：头几乎占满画面，眼睛放大，只留一点肩膀和衣领。",
+      "修好手机上点三条横杆后整屏发糊的问题：去掉了 WebView 上会一直保留的毛玻璃。",
+      "打卡不再整页重刷，只更新那一行和数字，点勾时不再掉帧。",
+      "只有点角色本身才会 Q 弹；点场景上半部分不再误触走动，只有点地面才走。",
+      "文字气泡不再跟着跳，只让角色自己弹。"
+    ]
+  },
   {
     version: "0.5.1",
     date: "2026-11-01",

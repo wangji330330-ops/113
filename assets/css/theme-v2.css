@@ -2066,3 +2066,43 @@ textarea {
 .place-actor svg {
   transition: transform .18s ease;
 }
+
+/* 大头的落地与底衬 */
+.hero__avatar svg {
+  background: linear-gradient(160deg, #fff9f6 0%, #fdf2f6 55%, #f3f6fd 100%);
+  border-radius: 30px;
+  box-shadow: 0 10px 22px rgba(214, 158, 168, .2);
+  filter: none;
+}
+
+.hero__avatar::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 96px;
+  width: 78px;
+  height: 10px;
+  transform: translateX(-50%);
+  background: radial-gradient(ellipse at center, rgba(120, 96, 86, .18), transparent 72%);
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: -1;
+}
+
+.place-actor::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -5%;
+  width: 78%;
+  height: 12%;
+  transform: translateX(-50%);
+  background: radial-gradient(ellipse at center, rgba(96, 74, 64, .26), transparent 70%);
+  border-radius: 50%;
+  z-index: -1;
+  pointer-events: none;
+}
+
+.place-actor svg {
+  border-radius: 18px;
+}
