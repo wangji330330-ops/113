@@ -1,5 +1,5 @@
 /*
- * 微光小屋 · 像素客厅
+ * 日记 · 像素客厅
  * A hand-drawn 384×216 canvas scene. No image assets, no dependencies.
  */
 

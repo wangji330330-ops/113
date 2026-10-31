@@ -66,6 +66,8 @@ import {
   esc
 } from "./helpers.js";
 
+import { AVATARS, avatarSvg } from "./avatar.js";
+
 const ROUTES = new Set(["today", "places", "habits", "diary", "rewards", "me"]);
 const REDUCED_MOTION = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 const now = new Date();
@@ -165,21 +167,31 @@ function currentSpeech() {
 
 function setDocumentTitle() {
   const titles = {
-    today: "微光小屋 · 一点点也算数",
-    places: "去走走 · 微光小屋",
-    habits: "我的小事 · 微光小屋",
-    diary: "日记本 · 微光小屋",
-    rewards: "给自己的奖励 · 微光小屋",
-    me: "我的小屋 · 微光小屋"
+    today: "日记 · 一点点也算数",
+    places: "去走走 · 日记",
+    habits: "我的小事 · 日记",
+    diary: "日记本 · 日记",
+    rewards: "给自己的奖励 · 日记",
+    me: "我的小屋 · 日记"
   };
   document.title = titles[ui.route] || titles.today;
 }
 
+function setNavOpen(open) {
+  const isOpen = Boolean(open);
+  document.body.classList.toggle("nav-open", isOpen);
+  const scrim = $("#nav-scrim");
+  if (scrim) scrim.hidden = !isOpen;
+  const btn = $(".nav-toggle");
+  if (btn) btn.setAttribute("aria-expanded", String(isOpen));
+}
+
 function renderShell({ focusPage = false, animatePage = true } = {}) {
+  setNavOpen(false);
   const state = store.getState();
   const stats = store.getStats();
   document.documentElement.classList.toggle("no-motion", !state.settings.motion);
-  $("#app-bar").innerHTML = renderAppBar({ state, stats });
+  $("#app-bar").innerHTML = renderAppBar({ state, stats, route: ui.route });
   $("#bottom-nav").innerHTML = renderNav({
     route: ui.route,
     claimableCount: stats.claimableCount,
@@ -201,6 +213,7 @@ function renderPage({ focusPage = false, animatePage = true } = {}) {
       stats,
       overview,
       speech: currentSpeech(),
+      avatar: store.getAvatar(),
       homePlace: getHomePlace(),
       memoryCount: store.getMemories().length
     });
@@ -465,7 +478,7 @@ function registerServiceWorker() {
   if (["localhost", "127.0.0.1"].includes(location.hostname)) return;
   window.addEventListener("load", () => {
     navigator.serviceWorker.register("./sw.js").catch((error) => {
-      console.warn("微光小屋：离线缓存暂时没有开启。", error);
+      console.warn("日记：离线缓存暂时没有开启。", error);
     });
   });
 }
@@ -519,7 +532,7 @@ function onDocumentClick(event) {
   handleAction(action, actionEl, event);
 }
 
-function handleAction(action, el) {
+function handleAction(action, el, event) {
   switch (action) {
     case "close-modal":
       audio.play("click");
@@ -528,11 +541,30 @@ function handleAction(action, el) {
     case "toggle-sound":
       toggleSound();
       break;
+    case "toggle-nav":
+      audio.play("nav");
+      setNavOpen(!document.body.classList.contains("nav-open"));
+      break;
+    case "close-nav":
+      setNavOpen(false);
+      break;
     case "toggle-setting":
       toggleSetting(el.dataset.key);
       break;
     case "set-energy":
       chooseEnergy(el.dataset.energy);
+      break;
+    case "poke-avatar":
+      pokeAvatar();
+      break;
+    case "move-actor":
+      moveActor(el, event);
+      break;
+    case "pick-avatar":
+      pickAvatar(el.dataset.avatar);
+      break;
+    case "save-avatar":
+      saveAvatar();
       break;
     case "poke-scene":
       pokeScene();
@@ -707,7 +739,7 @@ function handleAction(action, el) {
       closeModal();
       audio.play("click");
       if (ui.route === "diary") refreshAll({ keepScroll: true });
-      toast("现在是离线小灯。", { iconName: "leaf" });
+      toast("现在是离线陪伴。", { iconName: "leaf" });
       break;
     case "open-chat-key-page":
       openExternal("https://platform.deepseek.com/api_keys");
@@ -1050,7 +1082,7 @@ function openMemoryModal(memory = null, presetText = "") {
   const text = String(memory?.text || presetText || "").slice(0, 80);
   const kind = memory?.kind || "care";
   openModal(`
-    ${modalHead(memory ? "改一件小事" : "让小灯记住", "A SMALL THING")}
+    ${modalHead(memory ? "改一件小事" : "让本子记住", "A SMALL THING")}
     <p class="modal-sub">只写你愿意留下的。它可以很小，也可以随时删掉。</p>
     <form class="modal-form" data-form="memory" data-id="${memory ? esc(memory.id) : ""}">
       <label class="field-label" for="memory-text">这件小事</label>
@@ -1090,13 +1122,13 @@ function addMemorySuggestion(text, kind) {
   const memory = store.addMemory(text, kind || "care", "manual");
   if (!memory) return;
   if (memory.duplicate) {
-    toast("这件事小灯已经记着了。", { iconName: "heart" });
+    toast("这件事本子已经记着了。", { iconName: "heart" });
     return;
   }
   if (ui.route === "diary" && ui.diaryTab === "memory") {
     refreshAll({ keepScroll: true });
   }
-  toast("小灯记住了。", { iconName: "heart", tone: "gold" });
+  toast("本子记住了。", { iconName: "heart", tone: "gold" });
 }
 
 function rememberChatMessage(id) {
@@ -1110,7 +1142,7 @@ function askDeleteMemory(id) {
   if (!memory) return;
   openConfirm({
     title: "忘掉这件小事？",
-    body: `小灯会忘掉「${esc(memory.text)}」。${memory.source === "chat" ? " 聊天记录不会被删除。" : ""}`,
+    body: `本子会忘掉「${esc(memory.text)}」。${memory.source === "chat" ? " 聊天记录不会被删除。" : ""}`,
     confirmLabel: "忘掉",
     danger: true,
     onConfirm: () => {
@@ -1126,8 +1158,8 @@ function openChatSettings() {
   const masked = maskKey(settings.apiKey);
   openModal(`
     ${modalHead("连接 DeepSeek", "CHAT SETTINGS")}
-    <p class="modal-sub">小灯会用 DeepSeek V4.1 Flash 陪你说话。Key 只保存在这台设备里，不进入导出备份，也不会经过微光小屋的服务器。</p>
-    <p class="chat-fine">联网聊天时，最近的「小灯记得」会作为上下文一起发送给 DeepSeek；离线小灯不会上传任何内容。</p>
+    <p class="modal-sub">本子会用 DeepSeek V4.1 Flash 陪你说话。Key 只保存在这台设备里，不进入导出备份，也不会经过日记的服务器。</p>
+    <p class="chat-fine">联网聊天时，最近的「记得」会作为上下文一起发送给 DeepSeek；离线陪伴不会上传任何内容。</p>
     <form class="modal-form" data-form="chat-settings">
       <label class="field-label" for="chat-key">DeepSeek API Key</label>
       <input id="chat-key" class="text-input" name="apiKey" type="password" autocomplete="off" spellcheck="false" placeholder="${masked ? `已保存 ${masked}，留空保留` : "sk-..."}" data-autofocus>
@@ -1154,7 +1186,7 @@ function openChatSettings() {
         </div>
       </div>
     </form>
-    <button class="text-btn chat-local-switch" type="button" data-action="switch-local-chat">${icon("leaf")} 先和离线小灯聊（不联网）</button>
+    <button class="text-btn chat-local-switch" type="button" data-action="switch-local-chat">${icon("leaf")} 先和离线陪伴聊（不联网）</button>
     <div class="chat-web-entry">
       <b>不想用 API？</b>
       <a class="text-btn" href="https://chat.deepseek.com/" target="_blank" rel="noopener" data-action="open-deepseek-web">打开 DeepSeek 网页版（免费）↗</a>
@@ -1190,7 +1222,7 @@ function askClearChatKey() {
   if (!hasChatKey()) return;
   openConfirm({
     title: "删除 API Key？",
-    body: "删除后小灯会停止联网聊天。日记和聊天记录都会保留。",
+    body: "删除后本子会停止联网聊天。日记和聊天记录都会保留。",
     confirmLabel: "删除 Key",
     danger: true,
     onConfirm: () => {
@@ -1198,7 +1230,7 @@ function askClearChatKey() {
       ui.chatMode = "local";
       ui.chatError = "";
       if (ui.route === "diary") refreshAll({ keepScroll: false });
-      toast("API Key 已从这台设备删除。小灯会在离线陪着你。", { iconName: "lock" });
+      toast("API Key 已从这台设备删除。本子会在离线陪着你。", { iconName: "lock" });
     }
   });
 }
@@ -1206,7 +1238,7 @@ function askClearChatKey() {
 function askClearChat() {
   openConfirm({
     title: "清空聊天记录？",
-    body: "只会删除和小灯的聊天，不会动日记本和打卡记录。",
+    body: "只会删除和本子的聊天，不会动日记本和打卡记录。",
     confirmLabel: "清空聊天",
     danger: true,
     onConfirm: () => {
@@ -1233,7 +1265,7 @@ function chatContextSummary() {
     `能量状态：${energy}`,
     `历史最长连续：${stats.longestStreak || 0} 天`,
     `此刻在场景：${getHomePlace().name}`,
-    memories ? `用户愿意让小灯记得的小事：${memories}` : ""
+    memories ? `用户愿意让记得的小事：${memories}` : ""
   ].filter(Boolean).join("；") + "。";
 }
 
@@ -1254,7 +1286,7 @@ async function sendChatTurn(rawText) {
       const result = generateLocalReply(text);
       appendChatMessage("assistant", result.content);
       if (result.savedMemory) {
-        toast(`小灯记住了：「${result.savedMemory.text}」`, { iconName: "heart", duration: 3600 });
+        toast(`本子记住了：「${result.savedMemory.text}」`, { iconName: "heart", duration: 3600 });
       }
     } catch {
       ui.chatError = "刚才没有接上话，再试一次吧。";
@@ -1267,7 +1299,7 @@ async function sendChatTurn(rawText) {
     return;
   }
   if (navigator.onLine === false) {
-    ui.chatError = "现在没有联网。想说话的话，切回离线小灯也可以。";
+    ui.chatError = "现在没有联网。想说话的话，切回离线陪伴也可以。";
     ui.diaryTab = "chat";
     refreshAll({ keepScroll: true });
     return;
@@ -1393,8 +1425,8 @@ function openOnboarding() {
         <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
       </div>
       <div class="onboarding__lantern" aria-hidden="true">${icon("lantern")}</div>
-      <p class="date-kicker">WELCOME TO GLIMMER NOOK</p>
-      <h2 id="modal-title">欢迎来到微光小屋</h2>
+      <p class="date-kicker">WELCOME TO DIARY</p>
+      <h2 id="modal-title">欢迎来到日记</h2>
       <p class="onboarding__lead">这里不催你。做到一点点，就点亮一点点。</p>
       <p class="onboarding__body">没有目标也没关系。先记录今天有没有喝水、有没有站起来走一走。等有力气的时候，再给自己设一个想要的奖励。</p>
       <ul class="onboarding__points">
@@ -1608,33 +1640,93 @@ function renderWardrobeSelection() {
   paintLookPreview();
 }
 
+const AVATAR_LINES = [
+  "今天也不用很厉害。",
+  "写一句就好，哪怕只有三个字。",
+  "先把肩膀放下来。",
+  "我在的，慢慢来。",
+  "不想说话，也可以只是坐着。"
+];
+
+function avatarGridHtml(selected) {
+  return AVATARS.map((item) => `
+    <button class="avatar-choice ${item.id === selected ? "is-active" : ""}" type="button"
+      data-action="pick-avatar" data-avatar="${item.id}" aria-pressed="${item.id === selected}">
+      ${avatarSvg(item.id, { size: 78, mood: "idle" })}
+      <span class="avatar-choice__name">${esc(item.name)}</span>
+    </button>
+  `).join("");
+}
+
+function pickAvatar(id) {
+  ui.avatarPick = id;
+  const grid = $("#avatar-grid");
+  if (grid) grid.innerHTML = avatarGridHtml(id);
+  audio.play("click");
+}
+
+function saveAvatar() {
+  store.setAvatar(ui.avatarPick || "");
+  ui.avatarPick = null;
+  closeModal();
+  audio.play("check");
+  refreshAll({ keepScroll: true });
+  toast("换好了。", { iconName: "spark", tone: "gold", duration: 2400 });
+}
+
+function moveActor(el, event) {
+  if (!el || !event) return;
+  const frame = el.closest(".place-frame");
+  if (!frame) return;
+  const actor = frame.querySelector(".place-actor");
+  if (!actor) return;
+  const rect = frame.getBoundingClientRect();
+  if (!rect.width) return;
+  const ratio = (event.clientX - rect.left) / rect.width;
+  const next = Math.min(0.9, Math.max(0.1, ratio));
+  const prev = parseFloat(actor.style.left) || 50;
+  actor.classList.toggle("is-flip", next < prev);
+  actor.style.left = (next * 100).toFixed(2) + "%";
+  actor.classList.remove("is-walking");
+  void actor.offsetWidth;
+  actor.classList.add("is-walking");
+  window.clearTimeout(moveActor.timer);
+  moveActor.timer = window.setTimeout(() => actor.classList.remove("is-walking"), 620);
+  audio.play("nav");
+}
+
+function popActor() {
+  const actor = $(".place-actor") || $(".hero__avatar");
+  if (!actor) return;
+  actor.classList.remove("is-pop");
+  void actor.offsetWidth;
+  actor.classList.add("is-pop");
+  window.setTimeout(() => actor.classList.remove("is-pop"), 460);
+}
+
+function pokeAvatar() {
+  popActor();
+  const el = $("#avatar-speech");
+  if (!el) return;
+  el.textContent = pickLine(AVATAR_LINES);
+  el.classList.remove("is-bump");
+  void el.offsetWidth;
+  el.classList.add("is-bump");
+  audio.play("click");
+}
+
 function openWardrobe() {
-  const look = normalizeLook(store.getLook());
-  ui.wardrobe = { draft: { ...look }, part: "head" };
+  const current = store.getAvatar() || AVATARS[0].id;
+  ui.avatarPick = current;
   openModal(`
-    ${modalHead("今天想穿什么？", "WARDROBE")}
-    <div class="wardrobe">
-      <div class="wardrobe__preview">
-        <div class="wardrobe__preview-frame">
-          <canvas id="look-preview" width="180" height="220" role="img" aria-label="当前搭配的预览"></canvas>
-        </div>
-        <p>这身会出现在小屋、今日小灯和所有场景里。</p>
-      </div>
-      <div class="wardrobe__panel">
-        <div class="look-tabs" id="look-tabs" role="tablist">${lookTabsHtml("head")}</div>
-        <div class="look-options" id="look-options">${lookOptionsHtml("head", ui.wardrobe.draft)}</div>
-      </div>
+    ${modalHead("挑一个形象", "AVATAR")}
+    <p class="modal-sub">它会出现在今天、日记和走走里。随时可以再来换。</p>
+    <div class="avatar-grid" id="avatar-grid">${avatarGridHtml(current)}</div>
+    <div class="form-actions">
+      <button class="pixel-btn pixel-btn--ghost" type="button" data-action="close-modal">先不换</button>
+      <button class="pixel-btn pixel-btn--gold" type="button" data-action="save-avatar">就用这个</button>
     </div>
-    <div class="wardrobe__foot">
-      <button class="text-btn" type="button" data-action="look-random">${icon("spark")} 随机一身</button>
-      <div class="form-actions__right">
-        <button class="pixel-btn pixel-btn--ghost" type="button" data-action="close-modal">先不换</button>
-        <button class="pixel-btn pixel-btn--gold" type="button" data-action="save-look">就穿这身</button>
-      </div>
-    </div>
-  `, { className: "modal--wardrobe", autofocus: false });
-  requestAnimationFrame(() => paintLookPreview());
-  window.setTimeout(() => $(".look-tab")?.focus({ preventScroll: true }), 90);
+  `, { className: "modal--avatar", autofocus: false });
 }
 
 function selectLookTab(part) {
@@ -2003,7 +2095,7 @@ function exportData() {
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement("a");
     anchor.href = url;
-    anchor.download = `微光小屋-备份-${store.dateKey()}.json`;
+    anchor.download = `日记-备份-${store.dateKey()}.json`;
     document.body.appendChild(anchor);
     anchor.click();
     anchor.remove();
@@ -2165,14 +2257,14 @@ async function onDocumentSubmit(event) {
       const saved = store.addMemory(text, kind, "manual");
       if (saved?.duplicate) {
         closeModal();
-        toast("这件事小灯已经记着了。", { iconName: "heart" });
+        toast("这件事本子已经记着了。", { iconName: "heart" });
         return;
       }
     }
     closeModal();
     if (ui.route === "diary") refreshAll({ keepScroll: true });
     audio.play("check");
-    toast(id ? "改好了。" : "小灯记住了。", { iconName: "heart", tone: "gold" });
+    toast(id ? "改好了。" : "本子记住了。", { iconName: "heart", tone: "gold" });
     return;
   }
 
@@ -2248,7 +2340,7 @@ async function onFileChange(event) {
   event.target.value = "";
   if (!file) return;
   if (file.size > 2 * 1024 * 1024) {
-    toast("这个文件太大了，可能不是微光小屋的备份。", { iconName: "leaf" });
+    toast("这个文件太大了，可能不是日记的备份。", { iconName: "leaf" });
     return;
   }
   let text = "";
@@ -2260,7 +2352,7 @@ async function onFileChange(event) {
       throw new Error("invalid");
     }
   } catch {
-    toast("这个文件不像是微光小屋的备份。", { iconName: "leaf" });
+    toast("这个文件不像是日记的备份。", { iconName: "leaf" });
     return;
   }
   openConfirm({

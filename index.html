@@ -3,22 +3,22 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>微光小屋 · 一点点也算数</title>
-  <meta name="description" content="一个不催你的像素风打卡小屋。完成一点点，点亮一点点。">
+  <title>日记 · 一点点也算数</title>
+  <meta name="description" content="一个不催你的日记本。写一句，记一件小事，都算数。">
   <meta property="og:type" content="website">
-  <meta property="og:title" content="微光小屋 · 一点点也算数">
-  <meta property="og:description" content="一个不催你的像素风打卡小屋。完成一点点，点亮一点点。">
+  <meta property="og:title" content="日记 · 一点点也算数">
+  <meta property="og:description" content="一个不催你的日记本。写一句，记一件小事，都算数。">
   <meta property="og:image" content="./assets/icons/icon-512.png">
-  <meta name="theme-color" content="#171326">
-  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#fbf6f0">
+  <meta name="color-scheme" content="light">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="微光小屋">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="日记">
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="icon" type="image/png" href="./assets/icons/favicon-64.png">
   <link rel="apple-touch-icon" href="./assets/icons/apple-touch-icon.png">
-  <link rel="stylesheet" href="./assets/fonts/fusion-pixel/fusion-pixel.css">
   <link rel="stylesheet" href="./assets/css/style.css">
+  <link rel="stylesheet" href="./assets/css/theme-v2.css">
 </head>
 <body class="is-booting">
   <div class="world" aria-hidden="true">
@@ -28,10 +28,30 @@
   </div>
 
   <div id="app" class="app-shell">
-    <header id="app-bar" class="app-bar"></header>
-    <main id="page" class="page" tabindex="-1"></main>
-    <nav id="bottom-nav" class="bottom-nav" aria-label="主导航"></nav>
+    <aside id="side-nav" class="side-nav" aria-label="主导航">
+      <a class="side-brand" href="#/today" data-nav aria-label="日记首页">
+        <span class="side-brand__mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="4.5" y="3.5" width="15" height="17" rx="4.5"/>
+            <path d="M8.6 9.4h6.8M8.6 14.6h4.4"/>
+          </svg>
+        </span>
+        <span class="side-brand__text">
+          <strong>日记</strong>
+          <small>一点点也算数</small>
+        </span>
+      </a>
+      <nav id="bottom-nav" class="nav-list" aria-label="页面"></nav>
+      <div id="side-foot" class="side-foot"></div>
+    </aside>
+
+    <div class="app-main">
+      <header id="app-bar" class="app-bar"></header>
+      <main id="page" class="page" tabindex="-1"></main>
+    </div>
   </div>
+
+  <div id="nav-scrim" class="nav-scrim" data-action="close-nav" hidden></div>
 
   <div id="modal-root" class="modal-root" hidden></div>
   <div id="toast-root" class="toast-root" role="status" aria-live="polite"></div>
@@ -42,11 +62,11 @@
     <div class="boot__lantern">
       <span></span><span></span><span></span><span></span>
     </div>
-    <p>正在点亮小屋<span class="boot__dots">...</span></p>
+    <p>正在翻开本子<span class="boot__dots">...</span></p>
   </div>
 
   <noscript>
-    <div class="noscript">微光小屋需要 JavaScript 才能点亮，请在浏览器设置中开启。</div>
+    <div class="noscript">日记需要 JavaScript 才能打开，请在浏览器设置中开启。</div>
   </noscript>
 
   <script type="module" src="./assets/js/app.js"></script>

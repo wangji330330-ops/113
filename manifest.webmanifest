@@ -1,7 +1,7 @@
 {
-  "name": "微光小屋 · 一点点也算数",
-  "short_name": "微光小屋",
-  "description": "一个不催你的像素风打卡小屋。完成一点点，点亮一点点。",
+  "name": "日记 · 一点点也算数",
+  "short_name": "日记",
+  "description": "一个不催你的日记本。写一句，记一件小事，都算数。",
   "lang": "zh-CN",
   "dir": "ltr",
   "start_url": "./",
@@ -10,8 +10,8 @@
   "display": "standalone",
   "display_override": ["standalone", "minimal-ui"],
   "orientation": "portrait-primary",
-  "background_color": "#171326",
-  "theme_color": "#171326",
+  "background_color": "#fdf8f3",
+  "theme_color": "#fdf8f3",
   "categories": ["lifestyle", "productivity", "health"],
   "icons": [
     {

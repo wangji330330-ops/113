@@ -141,7 +141,8 @@ function createInitialState() {
       name: "",
       createdAt: now,
       onboarded: false,
-      look: { ...DEFAULT_LOOK }
+      look: { ...DEFAULT_LOOK },
+      avatar: ""
     },
     settings: {
       sound: true,
@@ -160,7 +161,7 @@ function createInitialState() {
 
 function sanitizeState(raw, { strict = false } = {}) {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
-    throw new Error("这不是一份微光小屋的备份。");
+    throw new Error("这不是一份日记的备份。");
   }
   if (strict && (!Array.isArray(raw.habits) || !Array.isArray(raw.rewards) || typeof raw.logs !== "object")) {
     throw new Error("备份文件缺少必要的数据。");
@@ -190,7 +191,8 @@ function sanitizeState(raw, { strict = false } = {}) {
       name: clampText(profile.name, 20),
       createdAt: profile.createdAt || base.profile.createdAt,
       onboarded: Boolean(profile.onboarded),
-      look: normalizeLook(profile.look)
+      look: normalizeLook(profile.look),
+      avatar: typeof profile.avatar === "string" ? profile.avatar.slice(0, 24) : ""
     },
     settings: {
       sound: settings.sound !== false,
@@ -220,7 +222,7 @@ function loadState() {
     const parsed = JSON.parse(raw);
     return sanitizeState(parsed);
   } catch (error) {
-    console.warn("微光小屋：本地数据读取失败，已保留原数据副本。", error);
+    console.warn("日记：本地数据读取失败，已保留原数据副本。", error);
     try {
       localStorage.setItem(`${STORE_KEY}:broken`, raw);
     } catch {
@@ -239,7 +241,7 @@ function persist() {
     state.meta.lastOpenAt = nowIso();
     localStorage.setItem(STORE_KEY, JSON.stringify(state));
   } catch (error) {
-    console.warn("微光小屋：暂时无法保存数据。", error);
+    console.warn("日记：暂时无法保存数据。", error);
   }
 }
 
@@ -277,6 +279,16 @@ export function setLook(look) {
 
 export function getLook() {
   return normalizeLook(state.profile.look);
+}
+
+export function setAvatar(id) {
+  state.profile.avatar = String(id || "").slice(0, 24);
+  persist();
+  return state.profile.avatar;
+}
+
+export function getAvatar() {
+  return state.profile.avatar || "";
 }
 
 export function completeOnboarding(name) {
@@ -660,7 +672,7 @@ export function importData(text) {
   }
   const payload = parsed.state || parsed;
   if (!payload || !Array.isArray(payload.habits) || !Array.isArray(payload.rewards) || typeof payload.logs !== "object") {
-    throw new Error("这不是微光小屋的备份文件。");
+    throw new Error("这不是日记的备份文件。");
   }
   const next = sanitizeState(payload, { strict: true });
   state = next;

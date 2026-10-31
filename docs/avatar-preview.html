@@ -1,0 +1,294 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Q 版大头形象 · 24 个预览</title>
+<style>
+  :root {
+    --ink: #5b4a5e;
+    --ink-soft: #8a7690;
+    --cream: #fdf7f1;
+    --card: #fffdfa;
+    --pink: #f4a0b5;
+    --sky: #93b8d9;
+    --matcha: #a8c9a0;
+    --butter: #e8c07d;
+    --lav: #b9a7d9;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    background:
+      radial-gradient(circle at 12% 4%, rgba(244, 160, 181, .14), transparent 32%),
+      radial-gradient(circle at 88% 2%, rgba(147, 184, 217, .16), transparent 30%),
+      var(--cream);
+    color: var(--ink);
+    font-family: "PingFang SC", "Microsoft YaHei", "Noto Sans SC", "Hiragino Sans GB", system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    padding: 40px clamp(16px, 4vw, 56px) 72px;
+  }
+  header { max-width: 1320px; margin: 0 auto 28px; }
+  .eyebrow {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-size: 12px; letter-spacing: .18em; text-transform: uppercase;
+    color: var(--ink-soft); margin: 0 0 12px;
+  }
+  .eyebrow::before {
+    content: ""; width: 26px; height: 2px; border-radius: 2px; background: var(--pink);
+  }
+  h1 { font-size: clamp(26px, 3.2vw, 38px); margin: 0 0 10px; letter-spacing: .02em; }
+  h1 b { color: #c47389; font-weight: 700; }
+  .lede { margin: 0; color: var(--ink-soft); font-size: 14.5px; line-height: 1.75; max-width: 760px; }
+  .stats {
+    display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px;
+  }
+  .chip {
+    font-size: 12.5px; color: var(--ink);
+    background: var(--card); border: 1px solid rgba(91, 74, 94, .12);
+    padding: 6px 12px; border-radius: 999px;
+    box-shadow: 0 1px 0 rgba(91, 74, 94, .04);
+  }
+  .chip b { color: #c47389; }
+  main { max-width: 1320px; margin: 0 auto; }
+  section { margin: 42px 0 0; }
+  .sec-head { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+  h2 { font-size: 18px; margin: 0; letter-spacing: .04em; }
+  .sec-note { font-size: 12.5px; color: var(--ink-soft); }
+  .card {
+    background: var(--card);
+    border: 1px solid rgba(91, 74, 94, .1);
+    border-radius: 20px;
+    padding: 16px 12px 12px;
+    display: flex; flex-direction: column; align-items: center; gap: 8px;
+    box-shadow: 0 6px 18px rgba(91, 74, 94, .05);
+  }
+  .card .avatar { display: block; line-height: 0; }
+  .card .avatar svg { display: block; }
+  .meta { text-align: center; line-height: 1.35; }
+  .meta .name { font-size: 13.5px; font-weight: 600; }
+  .meta .id { font-size: 10.5px; color: var(--ink-soft); letter-spacing: .08em; }
+  .dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; margin-right: 5px; vertical-align: 1px; }
+
+  .grid-160 { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
+  .grid-160 .card { padding: 22px 12px 14px; }
+  .grid-80 { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 12px; }
+  .grid-80 .card { border-radius: 16px; padding: 12px 8px 9px; }
+  .grid-80 .meta .name { font-size: 11.5px; }
+  .grid-40 { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 8px; }
+  .grid-40 .card { border-radius: 12px; padding: 8px 4px 7px; gap: 5px; }
+  .grid-40 .meta .name { font-size: 10.5px; font-weight: 500; }
+  .grid-40 .meta .id { font-size: 9px; }
+
+  .mood-table {
+    background: var(--card);
+    border: 1px solid rgba(91, 74, 94, .1);
+    border-radius: 20px;
+    padding: 6px 18px;
+    box-shadow: 0 6px 18px rgba(91, 74, 94, .05);
+    overflow: hidden;
+  }
+  .mood-row {
+    display: grid;
+    grid-template-columns: 132px repeat(4, minmax(0, 1fr));
+    align-items: center;
+    gap: 8px;
+    border-top: 1px dashed rgba(91, 74, 94, .12);
+    padding: 7px 0;
+  }
+  .mood-row:first-child { border-top: 0; }
+  .mood-row.head { font-size: 11.5px; color: var(--ink-soft); letter-spacing: .08em; padding: 12px 0 6px; }
+  .mood-row.head > span { text-align: center; }
+  .mood-row.head > span:first-child { text-align: left; }
+  .mood-cell { display: flex; justify-content: center; }
+  .mood-cell svg { display: block; }
+  .who { display: flex; align-items: center; gap: 8px; font-size: 12.5px; }
+  .who .name { font-weight: 600; }
+  .who .id { font-size: 10px; color: var(--ink-soft); letter-spacing: .06em; }
+
+  .img-row { display: flex; flex-wrap: wrap; gap: 18px; align-items: center; }
+  .img-row figure { margin: 0; text-align: center; }
+  .img-row img { display: block; border-radius: 14px; background: rgba(91, 74, 94, .04); }
+  .img-row figcaption { font-size: 11px; color: var(--ink-soft); margin-top: 6px; }
+
+  footer {
+    max-width: 1320px; margin: 48px auto 0;
+    border-top: 1px solid rgba(91, 74, 94, .12);
+    padding-top: 18px; color: var(--ink-soft); font-size: 12px; line-height: 1.9;
+  }
+  code { font-family: ui-monospace, "Cascadia Code", Consolas, monospace; font-size: 11.5px; }
+  .warn {
+    margin: 20px auto 0; max-width: 1320px; padding: 14px 16px;
+    border: 1px solid rgba(196, 115, 137, .4); background: #fff7f4;
+    border-radius: 14px; font-size: 13px; line-height: 1.7; color: #8a5567;
+  }
+  .warn[hidden] { display: none; }
+  @media (max-width: 1000px) {
+    .grid-160 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .grid-80 { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+    .grid-40 { grid-template-columns: repeat(8, minmax(0, 1fr)); }
+  }
+  @media (max-width: 680px) {
+    .grid-160 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grid-80 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .grid-40 { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+    .mood-row { grid-template-columns: 92px repeat(4, minmax(0, 1fr)); }
+    .who .id { display: none; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <p class="eyebrow">original chibi avatar set</p>
+  <h1>Q 版大头形象 <b>24</b> 个</h1>
+  <p class="lede">
+    纯前端参数化 SVG，零依赖、不联网、无外链图片。统一 <code>viewBox="0 0 120 120"</code>，
+    2.2 描边，扁平色块加极轻渐变。同一头像在 40px 列表与 160px 大图下都能看清。
+  </p>
+  <div class="stats">
+    <span class="chip">角色 <b id="stat-count">24</b> 个</span>
+    <span class="chip">SVG 合计 <b id="stat-bytes">—</b></span>
+    <span class="chip">单个平均 <b id="stat-avg">—</b></span>
+    <span class="chip">尺寸 40 / 80 / 160</span>
+    <span class="chip">mood idle · happy · tired · sad</span>
+  </div>
+</header>
+
+<div class="warn" id="boot-warn" hidden>
+  头像没有渲染出来：这个预览页用 ES module 直接 <code>import "../assets/js/avatar.js"</code>。
+  浏览器不允许 <code>file://</code> 下加载模块，请用本地 HTTP 服务打开本页，
+  或给 Chrome 加 <code>--allow-file-access-from-files</code> 参数。
+</div>
+
+<main>
+  <section id="size-160">
+    <div class="sec-head"><h2>160px · 大图</h2><span class="sec-note">看细节：眼睛高光、发丝、配饰、衣服层次</span></div>
+    <div class="grid-160" id="grid-160"></div>
+  </section>
+
+  <section id="size-80">
+    <div class="sec-head"><h2>80px · 中图</h2><span class="sec-note">常规卡片 / 对话头像</span></div>
+    <div class="grid-80" id="grid-80"></div>
+  </section>
+
+  <section id="size-40">
+    <div class="sec-head"><h2>40px · 列表小头像</h2><span class="sec-note">挤在一起也要能认出不同的脸</span></div>
+    <div class="grid-40" id="grid-40"></div>
+  </section>
+
+  <section id="moods">
+    <div class="sec-head"><h2>4 种 mood</h2><span class="sec-note">idle 默认 / happy 笑眼+腮红 / tired 半闭眼 / sad 眉眼下垂+小嘴</span></div>
+    <div class="mood-table" id="mood-table"></div>
+  </section>
+
+  <section id="data-uri">
+    <div class="sec-head"><h2>data URI · &lt;img&gt; 直接引用</h2><span class="sec-note">avatarDataUri() 输出，验证独立文档里渐变与高光正常</span></div>
+    <div class="img-row" id="img-row"></div>
+  </section>
+</main>
+
+<footer>
+  原创角色：发型 × 发色 × 眼睛 × 肤色 × 服装 × 配饰 参数化组合，不含任何既有动漫 / 游戏角色。<br>
+  背景保持透明，由 App 端自行添加。描边 <code>#5b4a5e</code>，无 <code>&lt;style&gt;</code>，渐变 id 逐条唯一。
+</footer>
+
+<script>
+  // 若模块被浏览器拦截（file:// 直接打开），给个明确提示
+  window.setTimeout(function () {
+    if (!document.querySelector(".avatar svg")) {
+      document.getElementById("boot-warn").hidden = false;
+    }
+  }, 1500);
+</script>
+
+<script type="module">
+import {
+  AVATARS,
+  AVATAR_IDS,
+  avatarSvg,
+  avatarDataUri,
+  avatarById,
+  randomAvatarId
+} from "../assets/js/avatar.js";
+
+const MOODS = [
+  ["idle", "idle 默认"],
+  ["happy", "happy 笑眼"],
+  ["tired", "tired 犯困"],
+  ["sad", "sad 低落"]
+];
+
+const byteLen = (s) => new TextEncoder().encode(s).length;
+
+function card(avatar, size) {
+  const el = document.createElement("article");
+  el.className = "card";
+  el.dataset.avatar = avatar.id;
+  el.dataset.size = String(size);
+  el.innerHTML =
+    `<div class="avatar">${avatarSvg(avatar.config, { size })}</div>` +
+    `<div class="meta"><div class="name"><span class="dot" style="background:${avatar.color}"></span>${avatar.name}</div>` +
+    `<div class="id">${avatar.id}</div></div>`;
+  return el;
+}
+
+const grids = [
+  ["grid-160", 160],
+  ["grid-80", 80],
+  ["grid-40", 40]
+];
+for (const [gridId, size] of grids) {
+  const root = document.getElementById(gridId);
+  for (const avatar of AVATARS) root.appendChild(card(avatar, size));
+}
+
+// mood 矩阵
+const table = document.getElementById("mood-table");
+const head = document.createElement("div");
+head.className = "mood-row head";
+head.innerHTML = `<span>角色</span>${MOODS.map(([, label]) => `<span>${label}</span>`).join("")}`;
+table.appendChild(head);
+
+for (const avatar of AVATARS) {
+  const row = document.createElement("div");
+  row.className = "mood-row";
+  row.dataset.avatar = avatar.id;
+  const cells = MOODS.map(([mood]) =>
+    `<div class="mood-cell">${avatarSvg(avatar.config, { size: 56, mood })}</div>`
+  ).join("");
+  row.innerHTML =
+    `<div class="who"><span class="dot" style="background:${avatar.color}"></span>` +
+    `<span class="name">${avatar.name}</span><span class="id">${avatar.id}</span></div>${cells}`;
+  table.appendChild(row);
+}
+
+// data URI 验证
+const imgRow = document.getElementById("img-row");
+for (const avatar of AVATARS.slice(0, 6)) {
+  const fig = document.createElement("figure");
+  const img = new Image();
+  img.width = 64;
+  img.height = 64;
+  img.alt = avatar.name;
+  img.src = avatarDataUri(avatar.config, { size: 64, mood: avatar.id === "a02" ? "happy" : "idle" });
+  const cap = document.createElement("figcaption");
+  cap.textContent = `${avatar.name} · ${avatar.id}`;
+  fig.append(img, cap);
+  imgRow.appendChild(fig);
+}
+
+// 体积统计（按 idle 大图计）
+let total = 0;
+for (const avatar of AVATARS) total += byteLen(avatarSvg(avatar.config, { size: 120 }));
+const kb = (total / 1024).toFixed(1);
+document.getElementById("stat-count").textContent = String(AVATARS.length);
+document.getElementById("stat-bytes").textContent = `${kb} KB`;
+document.getElementById("stat-avg").textContent = `${(total / AVATARS.length / 1024).toFixed(2)} KB`;
+
+// 自检：确保 API 正常
+if (AVATAR_IDS.length !== AVATARS.length) throw new Error("AVATAR_IDS 长度不一致");
+if (avatarById("__missing__").id !== AVATARS[0].id) throw new Error("avatarById 回退失败");
+if (!AVATAR_IDS.includes(randomAvatarId())) throw new Error("randomAvatarId 返回了未知 id");
+</script>
+</body>
+</html>

@@ -1,92 +1,82 @@
-# 微光小屋 · Glimmer Nook
+# 日记
 
-> 一个不催你的像素风打卡小屋。做到一点点，就点亮一点点。
+> 一个不催你的日记本。写一句也好，做一件小事也好，都算数。
 
-微光小屋是一个偏「照顾自己」而不是「管理自己」的打卡应用。没有排行榜，没有连续中断惩罚，也不要求每天都很有动力。完成一件小事、来喘口气、写一页日记，或者和小灯说两句话，都算数。
+日记是一个偏「照顾自己」而不是「管理自己」的记录应用。没有排行榜，没有连续中断惩罚，也不要求每天都很有动力。写一句话、做一件小事、来喘口气，或者和本子说两句话，都算数。
 
-![微光小屋桌面版预览](docs/preview-desktop.png)
+![日记 桌面版](docs/preview-desktop.png)
 
 <p align="center">
-  <img src="docs/preview-diary.png" alt="日记本预览" width="32%">
-  <img src="docs/preview-memory.png" alt="小灯记得预览" width="32%">
-  <img src="docs/preview-chat.png" alt="离线小灯预览" width="32%">
+  <img src="docs/preview-diary.png" alt="日记本" width="32%">
+  <img src="docs/preview-memory.png" alt="记得" width="32%">
+  <img src="docs/preview-chat.png" alt="说说话" width="32%">
 </p>
 
 <p align="center">
-  <img src="docs/preview-mobile.png" alt="微光小屋手机版预览" width="280">
+  <img src="docs/preview-mobile.png" alt="手机版" width="280">
 </p>
 
 - 网页版：<https://wangji330330-ops.github.io/113/>
-- Android：[下载调试 APK v0.4.0](https://github.com/wangji330330-ops/113/releases/download/v0.4.0/glimmer-nook-v0.4.0-debug.apk)
-- [GitHub Release v0.4.0](https://github.com/wangji330330-ops/113/releases/tag/v0.4.0)
+- [GitHub Release](https://github.com/wangji330330-ops/113/releases)
 - [更新日志](CHANGELOG.md)
 
 ## 现在有什么
 
-- **今日页会随机换场景**：每次打开或刷新，13 个场景随机落在首页。可以直接在首页点场景里的小物件，也可以点小灯说话；不用先去另一个页面。
-- **13 个可停留场景**：
-  - 家里：客厅、房间、厨房、卫生间
-  - 外面：学校、图书馆、电影院、郊游、超市、球场、江边、爬山、兜风
-- **日记本**：按日期归档每天的文字。「给今天留一句话」不再限制字数，空一行自动分段；旧日记可以单独打开编辑。日记只保存在本机。
-- **小灯记得**：在「日记 → 小灯记得」里写下怕冷、喜欢靠窗、最近很累、不喜欢被催这些小事；可以分类、编辑、忘掉。它只保存在本机，会随导出备份保存。
-- **免费离线小灯**：聊天页默认就是离线陪伴，不联网、不调用模型、不花钱。它会参考你写下的记忆回应，会接住常见情绪；它不是大模型，不会假装知道很多知识。
-- **和小灯聊聊（可选联网）**：想聊更多时，可以接入 DeepSeek V4.1 Flash。需要你自己的 DeepSeek API Key，直接在设备上请求官方接口，不经过第三方代理。最近的记忆会作为聊天上下文一起发送。
-- **DeepSeek 网页版入口**：不想用 API 也可以免费登录网页版。Android 在应用内浏览器打开，网页版在新标签打开；登录和对话由 DeepSeek 页面完成，不会自动写进小屋。
-- **人物换装**：头、面、身、腿、鞋分开搭配，多种选择；在「小屋 → 人物形象」或今日页的「换个样子」进入。
-- **今日打卡**：三件预置小事，可自由增删改；点一下完成任务，点错再点一下即可取消。
-- **能量签到**：快没电 / 还行 / 有点光。只影响小灯的表情和对话，不影响奖励。
-- **喘口气**：半分钟呼吸引导。完成即算「今天来过」，会推进「出现天数」类奖励。
-- **自定义小事和奖励**：名称、图标、难度、达成条件都由自己定。
-- **成长与回顾**：微光等级、出现天数、完成次数、最长连续、月历足迹。
-- **版本与更新**：设置内检查更新、查看更新日志；网页版在线更新，Android 跳转到新版 APK。
-- **像素演出与音效**：小灯呼吸、眨眼、被摸头、打卡跳跃，场景待机动画，WebAudio 8-bit 音效。
-- **本地优先**：打卡、日记、记忆、人物搭配和设置保存在浏览器 `localStorage`，不登录、不上传；支持导出 / 导入备份。
-- **PWA / 离线**：可添加到主屏幕，Service Worker 缓存应用与像素字体；除了需要联网的 API 聊天和网页版，其余功能可离线使用。
+- **今天**：一个 Q 版大头、今天的小事、给今天留一句话、今天感觉怎么样。主页只有这四块，其他都在各自的页面里。
+- **24 个 Q 版大头**：全部是项目内原创的 SVG，可以随时换。点一下会 Q 弹一下，并说一句话。
+- **13 个手绘场景**：家里 4 个（客厅 / 房间 / 厨房 / 卫生间），外面 9 个（学校 / 图书馆 / 电影院 / 郊游 / 超市 / 球场 / 江边 / 爬山 / 兜风）。
+  - 大头会站在场景里，大小是场景高度的 1/8。
+  - 点场景里的空地，它会走过去（左右移动 + 走路时的小跳）；点它自己会 Q 弹。
+  - 点场景里的物件，会有对应的一句话和小动画。
+- **日记本**：按日期归档。「给今天留一句话」不限字数，空一行自动分段；旧日记可以单独打开编辑。日记只保存在本机。
+- **记得**：写下怕冷、喜欢靠窗、最近很累、不喜欢被催这些小事；可以分类、编辑、忘掉。只保存在本机，会随导出备份保存。
+- **说说话**：默认是免费的离线陪伴，不联网、不调用模型、不花钱。它会参考你写下的记忆回应，会接住常见情绪；它不是大模型，不会假装知道很多知识。
+- **可选联网**：想聊更多时，可以接入 DeepSeek V4.1 Flash。需要你自己的 API Key，直接在设备上请求官方接口，不经过第三方代理。
+- **奖励**：名字、图标、难度、达成条件都由自己定。不是完成任务的工资，是愿意好好对待自己的证据。
+- **小事**：今日打卡的三件小事可以自由增删改；点一下完成，再点一下取消。
+- **成长与回顾**：等级、出现天数、完成次数、最长连续、月历足迹。
+- **本地优先**：打卡、日记、记忆、形象和设置保存在浏览器 `localStorage`，不登录、不上传；支持导出 / 导入备份。
+- **PWA / 离线**：可添加到主屏幕，Service Worker 缓存应用；除联网聊天外，其余功能可离线使用。
+- **导航**：左侧竖条。电脑上常驻，手机上用左上角的三条横杆打开。
 
-底部导航现在有五个位置：**今日 / 小事 / 日记 / 奖励 / 小屋**。原来的场景页还在，从今日页的「去走走」或小屋设置进入。
+## 形象
 
-## 小灯记得 & 离线陪伴
+- 入口：**小屋 → 人物形象**，或今天页点头像。
+- 24 个形象全部是 `assets/js/avatar.js` 里用参数化 SVG 画的原创角色：发型 × 发色 × 眼睛 × 肤色 × 服装 × 配饰组合而成，不涉及任何已有动漫角色。
+- 每个形象支持 4 种表情：`idle` / `happy` / `tired` / `sad`，会跟随「今天感觉怎么样」变化。
+- 想自己加一个：在 `AVATARS` 里复制一行 `makeAvatar(...)` 改参数即可。
 
-- 入口：**日记 → 小灯记得**；今日页的「小灯记得」和「小屋设置 → 小灯记得」也会到那里。
+## 场景
+
+- 入口：**走走**。13 个场景由 `assets/js/scene-art.js` 生成，全部是内联 SVG，没有位图资源。
+- 每个场景的物件坐标写在 `assets/js/place-data.js` 里（归一化 0–1），热区和画面是对齐的。
+- 想让大头换个站位：改 `place-data.js` 里对应场景的 `char.x`（0–384）。
+
+## 记得 & 说说话
+
+- 入口：**日记 → 记得 / 说说话**。
 - 写下一件小事，选「喜欢 / 在意 / 最近 / 不太喜欢」，就收进本机的小本子。
-- 聊天页默认是离线小灯：
-  - 不联网、不调用模型、不花 API 的钱。
-  - 会参考你写下的记忆；你可以点聊天里自己那句话下面的「记住」，把一句话收进小本子。
-  - 会明确标注「不是大模型」，不会编造知识；遇到危机内容会建议联系信任的人、120/110 或心理援助热线 12356。
-  - 离线聊天不会上传任何内容。
-- 连接 DeepSeek 后，最近的记忆会作为聊天上下文发送；仍然可以随时在聊天设置里切回离线小灯。
+- 离线聊天不联网、不花 API 的钱，会参考你写下的记忆；你可以点自己那句话下面的「记住」把它收进小本子。
+- 遇到危机内容，离线陪伴会给出去找信任的人、120/110 和心理援助热线 12356 的求助信息，而不是普通安慰。
 
 ## 联网聊天怎么用
 
 1. 在 [DeepSeek 开放平台](https://platform.deepseek.com/api_keys) 创建一个 API Key。
-2. 打开「日记 → 聊聊天 → 连接 DeepSeek」（离线小灯上方的「连接 DeepSeek」也可以），粘贴 Key，保存。
-3. 保存后会自动切到联网小灯。默认模型是 `deepseek-flash`（DeepSeek V4.1 Flash 的 API 模型名）。
+2. 打开「日记 → 说说话 → 连接 DeepSeek」，粘贴 Key，保存。
+3. 保存后会自动切到联网模式。默认模型是 `deepseek-flash`。
 
 说明：
 
-- 请求从你的设备直接发往 `https://api.deepseek.com`，不经过微光小屋自己的服务器。DeepSeek API 支持浏览器跨域请求。
-- Key 以明文保存在当前设备的 `localStorage` 中，**不会进入导出备份**；聊天记录也只保存在本机。请不要在公用设备上保存 Key。
-- 聊天内容会发送给 DeepSeek，并按 DeepSeek 的 API 计费；需要账户里有余额。
+- 请求从你的设备直接发往 `https://api.deepseek.com`，不经过日记自己的服务器。
+- Key 以明文保存在当前设备的 `localStorage` 中，**不会进入导出备份**；聊天记录也只保存在本机。
+- 聊天内容会发送给 DeepSeek，并按 DeepSeek 的 API 计费。
 - 不要把密码、身份证号、住址等敏感信息发进聊天。
-- 没有 Key 或没有联网时，默认是离线小灯；它不会假装自己是 DeepSeek。日记本、场景、打卡、奖励都可以照常离线使用。
-
-## DeepSeek 网页版（免费）
-
-如果你不想充 API，也可以直接用 DeepSeek 网页版：
-
-- 入口在「日记 → 和小灯聊聊」的说明卡里，以及「小屋设置 → DeepSeek 网页版」。
-- Android APK：在应用内的浏览器页面打开，保留登录 Cookie；右上角「浏览器」可以切到系统浏览器。
-- 网页版 / PWA：在新标签页打开 `chat.deepseek.com`。
-- 这条路径完全免费，但登录、验证码和对话都在 DeepSeek 的页面里完成。小屋读不到网页内容，也不会把对话自动存进日记。
-- 如果想要「聊天自动保存在小屋里、可以写进日记」，仍然需要 API；网页版和 API 是两条独立的路，互不影响。
-- 网页版需要联网；如果 DeepSeek 在 WebView 里拦截登录或验证码，点右上角「浏览器」用系统浏览器打开。
 
 ## 更新机制
 
-- 网页版、PWA：设置里的「版本与更新」会读取 `version.json`。有新版时点「更新并刷新」，会先更新 Service Worker，再重新载入新资源；打卡数据存在本地，不会丢。
-- Android APK：检查到新版后会打开 APK 下载页。下载后直接覆盖安装，WebView 的本地数据会保留。
-- 启动时会在联网状态下静默检查一次（每 12 小时最多一次），有新版会在「小屋」标签上显示一个小红点。
-- 版本清单在 [`version.json`](version.json)，完整历史在 [`CHANGELOG.md`](CHANGELOG.md)。
+- 网页版、PWA：设置里的「版本与更新」会读取 `version.json`。有新版时点「更新并刷新」，会先更新 Service Worker，再重新载入新资源；记录存在本地，不会丢。
+- Android APK：检查到新版后会打开下载页。覆盖安装需要新旧 APK 使用同一个签名。
+- 启动时会在联网状态下静默检查一次（每 12 小时最多一次），有新版会在侧栏「小屋」上显示一个小红点。
 
 ## 本地预览
 
@@ -104,104 +94,60 @@ npm start
 - 也可以直接上传到任意静态托管（Vercel、Netlify、Cloudflare Pages 等）。
 - 所有路径都是相对的，因此放在 `/113/` 这样的子路径下也能正常工作。
 
-## 下载 Android APK
-
-- Release 下载：[glimmer-nook-v0.4.0-debug.apk](https://github.com/wangji330330-ops/113/releases/download/v0.4.0/glimmer-nook-v0.4.0-debug.apk)（约 2.3 MB）
-- 仓库镜像：[download/glimmer-nook-v0.4.0-debug.apk](download/glimmer-nook-v0.4.0-debug.apk)
-- 校验：[SHA256](download/glimmer-nook-v0.4.0-debug.apk.sha256)
-- 支持 Android 7.0（API 24）及以上，版本 0.4.0（versionCode 5）。
-
-安装步骤：
-
-1. 在手机浏览器打开上面的 APK 链接下载。
-2. 如果系统提示「不允许安装未知来源应用」，在浏览器/文件管理器的设置里允许本次安装。
-3. 这是**调试签名**版本，适合自用测试，不建议上架应用商店。
-
-> 覆盖安装需要新旧 APK 使用同一个签名。当前文件由本机的调试密钥签名；后续继续在本机构建的版本可以直接覆盖。如果换机器或改用 GitHub Actions 构建，请先导出备份、卸载旧版再安装，或者配置统一的 release 签名。
-
-## 打包 Android APK
-
-### 自动构建（可选）
-
-仓库提供了工作流模板：[scripts/android-build-workflow.yml](scripts/android-build-workflow.yml)。把它复制到 `.github/workflows/android.yml`，并确保推送凭据具有 `workflow` 权限后，GitHub Actions 会自动构建调试 APK。
-
-### 本地构建
-
-需要 JDK 17、Android SDK 35。用 Android Studio 打开 `android/` 目录，先同步网页资源：
-
-```powershell
-powershell -ExecutionPolicy Bypass -File scripts/sync-android.ps1
-```
-
-然后 Run / Build APK。也可以命令行：
-
-```bash
-cd android
-gradle assembleDebug
-```
-
-APK 输出在 `android/app/build/outputs/apk/debug/app-debug.apk`。
-
-如果 Windows 项目路径包含中文，请把 `android/` 复制到纯英文路径再构建（AGP 会检查路径）。
-
-> 这是调试签名的 APK，适合自己安装使用，不适合直接上架应用商店。
-
 ## 项目结构
 
 ```text
-index.html                  应用外壳
+index.html                  应用外壳（侧栏 + 内容区）
 version.json                版本清单（检查更新用）
 manifest.webmanifest        PWA 清单
 sw.js                       离线缓存与更新
 CHANGELOG.md                人类可读的更新日志
 assets/
-  css/style.css             全部界面与动画样式
-  js/app.js                 应用启动、路由、弹窗、交互
-  js/views.js               五个导航页面的 HTML 模板
+  css/style.css             基础样式（历史上是像素主题，仍保留部分结构）
+  css/theme-v2.css          v0.5 主题层：浅色奶油配色、侧栏、场景、大头
+  js/app.js                 应用启动、路由、侧栏开合、弹窗、交互
+  js/views.js               六个页面的 HTML 模板
+  js/avatar.js              24 个 Q 版大头的参数化 SVG 生成器
+  js/scene-art.js           13 个场景的 SVG 绘制
+  js/place-data.js          场景文案、热区坐标
   js/store.js               本地数据、统计、奖励、日记
-  js/character.js           人物部件、搭配与绘制
-  js/scene.js               人物头像绘制与旧客厅场景（保留）
-  js/place-data.js          13 个场景的文案与可点击物件
-  js/places.js              场景绘制、粒子与场景控制器
   js/chat.js                DeepSeek 直连、历史与系统提示
-  js/companion.js           免费离线小灯与记忆回应
+  js/companion.js           免费离线陪伴与记忆回应
   js/updater.js             版本检查、Service Worker 更新、外部跳转
-  js/icons.js               12×12 像素图标集
+  js/icons.js               51 个柔和线条图标（24×24，currentColor）
   js/audio.js               WebAudio 音效合成
   js/data.js                预设内容、文案、等级、更新历史
   js/helpers.js             日期、转义、格式化小工具
-  fonts/fusion-pixel/       缝合像素字体（OFL-1.1）
-  icons/                    应用图标
-android/                    Android WebView 工程（含更新跳转桥）
+  fonts/                    旧的像素字体（v0.5 起不再加载）
+  icons/                    应用图标（v0.5 重新生成）
+android/                    Android WebView 工程
 scripts/                    本地服务器、图标生成、资源同步、构建模板
-docs/                       README 预览图
-download/                   APK 与校验文件
+docs/                       README 预览图与形象/场景预览页
 ```
+
+> `character.js` / `scene.js` / `places.js` 是 v0.4 的 Canvas 像素角色与场景，v0.5 起不再使用，保留是为了不打断旧缓存。
 
 ## 数据说明
 
-- 存储键：`glimmer-nook:v1`（打卡、日记、记忆、人物搭配）
+- 存储键：`glimmer-nook:v1`（打卡、日记、记忆、形象、设置都在这里）
 - 聊天设置：`glimmer-nook:deepseek`（只在本机；含 API Key）
 - 聊天记录：`glimmer-nook:chat`（只在本机；最多保留最近 80 条）
-- 每个自然日每个习惯只记一次；取消打卡会同步修正统计。
+- 每个自然日每件小事只记一次；取消打卡会同步修正统计。
 - 「出现天数」= 完成过至少一件小事，或完成过一次呼吸练习的日期数；只写日记不算打卡，但会出现在日记本里。
 - 「最长连续」按历史最长计算，断掉也不会抹掉已经解锁的奖励。
-- 日记不限字数（底层为安全起见限制单篇 20 万字符），旧日记可以单独编辑。
-- 换设备前建议在「小屋 → 导出备份」保存 JSON。备份包含打卡、日记和人物搭配，不包含 API Key 和聊天记录。
+- 换设备前建议在「小屋 → 导出备份」保存 JSON。备份包含打卡、日记、记忆和形象，不包含 API Key 和聊天记录。
 
-## 发布新版本（备忘）
+## 发布新版本
 
 1. 更新 `assets/js/data.js` 里的 `APP_VERSION`、`APP_BUILD` 和 `CHANGELOG`。
-2. 同步更新 `package.json`、`android/app/build.gradle.kts` 的 `versionCode` / `versionName`、`sw.js` 的 `CACHE`、`version.json`。
-3. 重新构建 APK，替换 `download/` 里的文件和 SHA256；把 `version.json` 的 `apkUrl` / `releaseUrl` 指向新的 Release。
-4. 创建新的 tag / Release 并上传 APK，推送后等 GitHub Pages 构建完成。
+2. 同步更新 `package.json`、`version.json`、`sw.js` 的 `CACHE`、`android/app/build.gradle.kts` 的 `versionCode` / `versionName`。
+3. 重新构建 APK（或用网页版/PWA），替换 `download/` 里的文件和 SHA256。
+4. 创建新的 tag / Release，推送后等 GitHub Pages 构建完成。
 
-## 一句题外话
+## 关于
 
-如果你最近真的很累，别一个人扛。找一个信任的人说说，或联系专业的心理支持。你不需要先变得有用，才值得被帮助。
+- 界面字体使用系统字体，不再加载像素字体。
+- 图标与形象都是项目内原创的内联 SVG，没有第三方图片资源。
+- 这个项目只有一个人写，功能会慢慢加。如果你也想要一个不太催人的记录工具，直接拿去改就好。
 
-## 字体
-
-[Fusion Pixel Font / 缝合像素字体](https://github.com/TakWolf/fusion-pixel-font)，SIL Open Font License 1.1。许可证见 `assets/fonts/fusion-pixel/LICENSE-OFL.txt`。
-
-
+> 如果你最近真的很累，别一个人扛。找一个信任的人说说，或联系专业的心理支持。你不需要先变得有用，才值得被帮助。

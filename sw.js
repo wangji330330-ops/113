@@ -1,6 +1,6 @@
-/* 微光小屋 offline cache */
-const CACHE = "glimmer-nook-v0.4.0";
-const FONT_CSS = "./assets/fonts/fusion-pixel/fusion-pixel.css";
+/* 日记 offline cache */
+const CACHE = "diary-v0.5.0";
+const FONT_CSS = "./assets/css/theme-v2.css";
 const CORE = [
   "./",
   "./index.html",
@@ -21,6 +21,8 @@ const CORE = [
   "./assets/js/store.js",
   "./assets/js/updater.js",
   "./assets/js/views.js",
+  "./assets/js/avatar.js",
+  "./assets/js/scene-art.js",
   FONT_CSS,
   "./assets/icons/icon-192.png",
   "./assets/icons/icon-512.png",

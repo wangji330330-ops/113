@@ -52,5 +52,5 @@ const server = http.createServer((req, res) => {
 });
 
 server.listen(PORT, "127.0.0.1", () => {
-  console.log(`微光小屋 dev server: http://127.0.0.1:${PORT}/`);
+  console.log(`日记 dev server: http://127.0.0.1:${PORT}/`);
 });

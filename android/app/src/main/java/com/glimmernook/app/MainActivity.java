@@ -18,7 +18,7 @@ import androidx.webkit.WebViewAssetLoader;
 import androidx.webkit.WebViewClientCompat;
 
 /**
- * A small, offline-only WebView shell for 微光小屋.
+ * A small, offline-only WebView shell for 日记.
  * The web app lives in app/src/main/assets/www and is served through
  * WebViewAssetLoader so localStorage gets a stable https origin.
  */

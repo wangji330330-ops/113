@@ -28,7 +28,7 @@ import androidx.annotation.Nullable;
  * An in-app browser for the free DeepSeek web chat.
  *
  * This is intentionally just a browser: it does not read the page, inject
- * scripts, or bring messages back into 微光小屋. Use the API chat inside the
+ * scripts, or bring messages back into 日记. Use the API chat inside the
  * app if you want saved, integrated conversations.
  */
 public class DeepSeekWebActivity extends Activity {

@@ -1,8 +1,8 @@
 /*
- * 小灯聊天 · DeepSeek V4.1 Flash
+ * 本子聊天 · DeepSeek V4.1 Flash
  *
  * 直接通过 DeepSeek 的 OpenAI 兼容接口联网。API Key 只保存在本机
- * localStorage 里，不进入微光小屋的导出备份，也不经过任何第三方代理。
+ * localStorage 里，不进入日记的导出备份，也不经过任何第三方代理。
  * DeepSeek API 支持浏览器跨域（CORS）。
  */
 
@@ -133,7 +133,7 @@ export function clearChatMessages() {
 
 export function buildSystemPrompt(contextText = "") {
   return [
-    "你是「微光小屋」里的小灯：一个像素小人，也是用户身边温柔的陪伴者。你住在有猫、台灯、江边和许多小场景的小屋里。",
+    "你是「日记」里的本子：一个安静的记录者，也是用户身边温柔的陪伴者。你不催人，也不评价今天完成得好不好。",
     "说话方式：温柔、具体、简短，通常 2 到 4 句。先接住对方此刻的感受，再给一个非常小、可选择的建议。不要一次问很多问题。",
     "不要使用说教、命令、打分或“你应该/你必须/加油就会好”的语气。允许用户没有动力、什么都不做、休息、难过。不要强行把话题拉回打卡。",
     "你可以自然提到小屋、团子、窗外的天气这些虚构意象，但不要编造现实世界里的事实，也不要假装知道用户没告诉你的事。",
@@ -154,7 +154,7 @@ function friendlyHttpError(status, detail) {
 
 export async function sendChatMessage(userMessages, settings, contextText = "") {
   if (navigator.onLine === false) {
-    throw new ChatError("现在没有联网。等有网了再和小灯说话吧。", "offline");
+    throw new ChatError("现在没有联网。等有网了再和本子说话吧。", "offline");
   }
   if (!settings.apiKey) {
     throw new ChatError("还没有填 DeepSeek API Key。", "no_key");
@@ -210,7 +210,7 @@ export async function sendChatMessage(userMessages, settings, contextText = "") 
   }
   const content = data?.choices?.[0]?.message?.content;
   if (!content || !String(content).trim()) {
-    throw new ChatError("小灯这次没接上话，再试一次吧。", "empty");
+    throw new ChatError("本子这次没接上话，再试一次吧。", "empty");
   }
   return {
     content: String(content).trim(),

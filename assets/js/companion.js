@@ -1,5 +1,5 @@
 /*
- * 离线小灯：一个不联网、不调用模型的陪伴回复器。
+ * 离线陪伴：一个不联网、不调用模型的陪伴回复器。
  *
  * 它不会假装自己是 DeepSeek，也不会编造知识。它只做三件事：
  * 接住一句情绪、记得用户主动留下的小事、给一个很小的下一步。
@@ -53,7 +53,7 @@ function extractMemory(text) {
     .replace(/[。！？?!，,；;]+$/g, "")
     .trim();
   if (phrase.length < 2 || /[?？]$/.test(phrase) || /什么|吗|怎么|为什么/.test(phrase)) return null;
-  if (/(记得|记住|你|小灯)/.test(phrase) && phrase.length < 5) return null;
+  if (/(记得|记住|你|本子)/.test(phrase) && phrase.length < 5) return null;
   return { text: phrase.slice(0, 80), kind: memoryKindFor(phrase) };
 }
 
@@ -161,7 +161,7 @@ export function generateLocalReply(rawText) {
     return { content: memorySentence(chosen) || "我记得一些，只是现在没找到那一件。" };
   }
 
-  if (/(在吗|你好|嗨|hello|小灯)/i.test(text) && text.length < 16) {
+  if (/(在吗|你好|嗨|hello|本子)/i.test(text) && text.length < 16) {
     return { content: `我在。\n\n${todayLine()}`.trim() };
   }
 
@@ -218,7 +218,7 @@ export function generateLocalReply(rawText) {
 
   if (/[?？]$/.test(text)) {
     return {
-      content: "这个问题我可能答不好。离线的小灯不懂太多，但我可以听你把它说完。\n\n你更希望我给一个建议，还是先陪你待着？"
+      content: "这个问题我可能答不好。离线的本子不懂太多，但我可以听你把它说完。\n\n你更希望我给一个建议，还是先陪你待着？"
     };
   }
 

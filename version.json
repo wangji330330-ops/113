@@ -1,15 +1,16 @@
 {
-  "version": "0.4.0",
-  "build": 5,
-  "releasedAt": "2026-10-19",
-  "title": "小灯记得，和免费的离线陪伴",
+  "version": "0.5.0",
+  "build": 6,
+  "releasedAt": "2026-10-31",
+  "title": "改名日记，换上 Q 版大头",
   "notes": [
-    "新增「小灯记得」：把怕冷、喜欢靠窗、最近很累这些小事留在本机，小灯会记得。",
-    "聊天页默认提供免费的离线小灯：不联网、不调用模型，会参考记忆回应。",
-    "离线小灯会明确标注不是大模型；遇到危机内容会给出求助信息。",
-    "连接 DeepSeek API 时，最近的记忆会作为聊天上下文发送；离线聊天不会上传。"
+    "应用改名为「日记」：一个不催你的日记本。",
+    "24 个原创 Q 版大头形象可选，点它会说一句话；原来的像素小人换装已经去掉。",
+    "13 个场景重画成柔和插画，大头会站在场景里，点场景里的东西会有反应。",
+    "导航改成左侧竖条：电脑上常驻，手机上用三条横杆打开。",
+    "去掉像素字体，换成浅色奶油配色和柔和线条图标。"
   ],
   "webUrl": "https://wangji330330-ops.github.io/113/",
-  "apkUrl": "https://github.com/wangji330330-ops/113/releases/download/v0.4.0/glimmer-nook-v0.4.0-debug.apk",
-  "releaseUrl": "https://github.com/wangji330330-ops/113/releases/tag/v0.4.0"
+  "apkUrl": "https://github.com/wangji330330-ops/113/releases",
+  "releaseUrl": "https://github.com/wangji330330-ops/113/releases/tag/v0.5.0"
 }
