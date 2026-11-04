@@ -39,7 +39,7 @@ import {
   renderWrite
 } from "./views.js";
 
-const APP_VERSION = "1.0.0";
+const APP_VERSION = "1.0.1";
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));

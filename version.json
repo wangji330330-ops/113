@@ -1,17 +1,13 @@
 {
-  "version": "1.0.0",
-  "build": 10,
+  "version": "1.0.1",
+  "build": 11,
   "releasedAt": "2026-11-05",
-  "title": "重写：一页一天",
+  "title": "修好手机上的导航",
   "notes": [
-    "整本重写：不再是打卡小屋，就是一页一天的日记本。",
-    "写一句就算，写不出来有引导句，可以换、可以关掉。",
-    "心情五档、标签、日历回看、去年今天。",
-    "浅色 / 深色 / 跟随系统，三档字号。",
-    "导出 JSON 备份和 Markdown，能再导回来。",
-    "旧版的数据已经在升级时清掉，从空白的一天开始。"
+    "修好手机上点左上角三横杠后，抽屉里的「日历」「我」点不动的问题。",
+    "遮罩挪进应用容器里，抽屉现在在遮罩之上，点菜单项能正常跳转。"
   ],
   "webUrl": "https://wangji330330-ops.github.io/113/",
-  "apkUrl": "https://wangji330330-ops.github.io/113/download/diary-v1.0.0-debug.apk",
+  "apkUrl": "https://wangji330330-ops.github.io/113/download/diary-v1.0.1-debug.apk",
   "releaseUrl": "https://github.com/wangji330330-ops/113/releases"
 }

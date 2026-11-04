@@ -1,6 +1,6 @@
 {
   "name": "diary",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "private": true,
   "description": "日记 · 一页一天",
   "scripts": {

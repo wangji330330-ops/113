@@ -16,7 +16,7 @@
 </p>
 
 - 网页版：<https://wangji330330-ops.github.io/113/>
-- Android：[下载调试 APK v1.0.0](https://wangji330330-ops.github.io/113/download/diary-v1.0.0-debug.apk)（约 1.5 MB，Android 7.0+）
+- Android：[下载调试 APK v1.0.1](https://wangji330330-ops.github.io/113/download/diary-v1.0.1-debug.apk)（约 1.4 MB，Android 7.0+）
 - [更新日志](CHANGELOG.md)
 
 ## 现在有什么
