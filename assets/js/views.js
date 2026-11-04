@@ -26,11 +26,11 @@ export function ico(name, cls = "") {
 }
 
 const MOOD_FACES = {
-  low: '<circle cx="12" cy="12" r="8.6"/><path d="M8.8 15.4c.9-1.1 2-1.6 3.2-1.6s2.3.5 3.2 1.6"/><path d="M9.2 9.6h.01M14.8 9.6h.01"/>',
-  meh: '<circle cx="12" cy="12" r="8.6"/><path d="M8.6 12.4h6.8"/><path d="M9.2 9.4h.01M14.8 9.4h.01"/>',
-  ok: '<circle cx="12" cy="12" r="8.6"/><path d="M8.4 11.6a3.6 3.6 0 0 1 3.6-2.6 3.6 3.6 0 0 1 3.6 2.6z"/><path d="M12 14.6v1.2"/>',
-  good: '<circle cx="12" cy="12" r="8.6"/><path d="M8.4 13.5c.9 1.4 2.1 2.1 3.6 2.1s2.7-.7 3.6-2.1"/><path d="M9.2 9.6h.01M14.8 9.6h.01"/>',
-  great: '<circle cx="12" cy="12" r="8.6"/><path d="M8 13.2c1 2 2.4 3 4 3s3-1 4-3"/>'
+  low: '<circle cx="12" cy="12" r="8.6"/><path d="M9.2 9.7h.01M14.8 9.7h.01"/><path d="M8.9 16.2c1-1.5 2.1-2.2 3.1-2.2s2.1.7 3.1 2.2"/>',
+  meh: '<circle cx="12" cy="12" r="8.6"/><path d="M9.2 9.7h.01M14.8 9.7h.01"/><path d="M9.2 14.7h5.6"/>',
+  ok: '<circle cx="12" cy="12" r="8.6"/><path d="M9.2 9.7h.01M14.8 9.7h.01"/><path d="M9.1 14.1c.8 1 1.8 1.6 2.9 1.6s2.1-.6 2.9-1.6"/>',
+  good: '<circle cx="12" cy="12" r="8.6"/><path d="M9.2 9.7h.01M14.8 9.7h.01"/><path d="M8.7 13.6c.9 1.8 2 2.7 3.3 2.7s2.4-.9 3.3-2.7"/>',
+  great: '<circle cx="12" cy="12" r="8.6"/><path d="M8.4 10.3c.7-1.1 1.8-1.1 2.5 0"/><path d="M13.1 10.3c.7-1.1 1.8-1.1 2.5 0"/><path d="M8.3 13.4h7.4c-.4 2.4-1.9 3.9-3.7 3.9s-3.3-1.5-3.7-3.9z" fill="currentColor" stroke="none"/>'
 };
 
 export function moodFace(id, cls = "") {
