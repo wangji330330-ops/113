@@ -1,8 +1,8 @@
-日记 · Android 调试版 v1.0.2
+日记 · Android 调试版 v1.1.0
 ==============================
 
 安装
-1. 在 Android 手机上下载 diary-v1.0.2-debug.apk。
+1. 在 Android 手机上下载 diary-v1.1.0-debug.apk。
 2. 允许浏览器或文件管理器安装未知来源应用。
 3. 点击 APK 安装。已经装过旧版的话，直接覆盖安装即可。
 
@@ -19,6 +19,6 @@
 - 所有内容保存在手机 WebView 的本地存储中，不上传。
 - 换设备前请在应用内「我 → 导出备份」保存 JSON。
 - 支持 Android 7.0（API 24）及以上。
-- 版本号：1.0.0 (versionCode 12)
+- 版本号：1.0.0 (versionCode 14)
 
-SHA256 校验文件：diary-v1.0.2-debug.apk.sha256
+SHA256 校验文件：diary-v1.1.0-debug.apk.sha256

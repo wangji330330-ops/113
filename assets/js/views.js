@@ -2,7 +2,7 @@
  * 页面模板。只负责拼 HTML，不碰数据。
  */
 
-import { MOODS, dayOfYear, relativeLabel, weekday } from "./store.js";
+import { MOODS, relativeLabel, weekday } from "./store.js";
 
 const ICONS = {
   pen: '<path d="M4 20l4.2-1 9.6-9.6a2 2 0 0 0 0-2.8l-.4-.4a2 2 0 0 0-2.8 0L5 15.8z"/><path d="M13.5 6.5l4 4"/>',
@@ -78,8 +78,6 @@ export function renderWrite({ key, entry, isToday, prompt, echo, showPrompt, sav
         <span>${year}年${month}月${day}日</span>
         <span class="dot">·</span>
         <span>${weekday(key)}</span>
-        <span class="dot">·</span>
-        <span>第 ${dayOfYear(key)} 天</span>
         ${rel ? `<span class="dot">·</span><span>${rel}</span>` : ""}
       </p>
       <h2 class="date-title">${month}月${day}日</h2>
