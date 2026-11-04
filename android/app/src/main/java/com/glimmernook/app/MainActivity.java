@@ -1,10 +1,15 @@
 package com.glimmernook.app;
 
 import android.app.Activity;
+import android.content.ContentValues;
 import android.content.Intent;
 import android.graphics.Color;
 import android.net.Uri;
+import android.provider.MediaStore;
+import android.util.Base64;
+import android.os.Build;
 import android.os.Bundle;
+import android.os.Environment;
 import android.view.View;
 import android.webkit.JavascriptInterface;
 import android.webkit.ValueCallback;
@@ -14,6 +19,10 @@ import android.webkit.WebResourceRequest;
 import android.webkit.WebResourceResponse;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
+
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.OutputStream;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -217,6 +226,47 @@ public class MainActivity extends Activity {
 
     /** 留给网页调用的小桥。 */
     private class WebAppBridge {
+        /**
+         * 把导出的内容存到手机的「下载」目录。
+         * 返回给人看的路径；失败返回空字符串。
+         */
+        @JavascriptInterface
+        public String saveFile(String name, String mime, String base64) {
+            if (name == null || base64 == null) return "";
+            String safeName = name.replaceAll("[\\\\/:*?\"<>|]", "_");
+            if (safeName.isEmpty()) safeName = "diary.txt";
+            try {
+                byte[] data = Base64.decode(base64, Base64.DEFAULT);
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    ContentValues values = new ContentValues();
+                    values.put(MediaStore.Downloads.DISPLAY_NAME, safeName);
+                    values.put(MediaStore.Downloads.MIME_TYPE, mime == null ? "application/octet-stream" : mime);
+                    values.put(MediaStore.Downloads.IS_PENDING, 1);
+                    Uri uri = getContentResolver()
+                            .insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values);
+                    if (uri == null) return "";
+                    try (OutputStream out = getContentResolver().openOutputStream(uri)) {
+                        if (out == null) return "";
+                        out.write(data);
+                    }
+                    values.clear();
+                    values.put(MediaStore.Downloads.IS_PENDING, 0);
+                    getContentResolver().update(uri, values, null, null);
+                    return "下载/" + safeName;
+                }
+                File dir = getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS);
+                if (dir == null) return "";
+                if (!dir.exists() && !dir.mkdirs()) return "";
+                File file = new File(dir, safeName);
+                try (FileOutputStream out = new FileOutputStream(file)) {
+                    out.write(data);
+                }
+                return file.getAbsolutePath();
+            } catch (Exception e) {
+                return "";
+            }
+        }
+
         @JavascriptInterface
         public void openExternal(String url) {
             if (url == null) return;

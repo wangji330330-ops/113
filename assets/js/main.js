@@ -38,7 +38,7 @@ import {
   renderWrite
 } from "./views.js";
 
-const APP_VERSION = "1.1.3";
+const APP_VERSION = "1.1.4";
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
@@ -391,7 +391,31 @@ function flushSave() {
 
 /* ---------------------------------------------------------------- 导入导出 */
 
+function toBase64(text) {
+  const bytes = new TextEncoder().encode(text);
+  let binary = "";
+  const chunk = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunk) {
+    binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
+  }
+  return btoa(binary);
+}
+
 function downloadFile(name, content, type) {
+  const bridge = window.GlimmerAndroid;
+  if (bridge && typeof bridge.saveFile === "function") {
+    try {
+      const path = bridge.saveFile(name, type, toBase64(content));
+      if (path) {
+        toast(`已保存到 ${path}`, 4200);
+        return;
+      }
+      toast("没存成功，换个位置试试。", 3000);
+      return;
+    } catch (e) {
+      // 走普通下载
+    }
+  }
   const blob = new Blob([content], { type: `${type};charset=utf-8` });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
@@ -401,7 +425,7 @@ function downloadFile(name, content, type) {
   a.click();
   a.remove();
   window.setTimeout(() => URL.revokeObjectURL(url), 3000);
-  toast("已经导出。");
+  toast("已经导出，去浏览器的下载里找。", 3200);
 }
 
 function pickFile() {
