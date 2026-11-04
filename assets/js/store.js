@@ -27,7 +27,7 @@ function blankState() {
 }
 
 function isEmpty(entry) {
-  return !entry.text.trim() && !entry.mood && !entry.tags.length;
+  return !entry.text.trim() && !entry.mood;
 }
 
 function load() {
@@ -42,7 +42,6 @@ function load() {
         const entry = {
           text: typeof v.text === "string" ? v.text : "",
           mood: MOODS.some((m) => m.id === v.mood) ? v.mood : "",
-          tags: Array.isArray(v.tags) ? v.tags.filter((t) => typeof t === "string").slice(0, 12) : [],
           updatedAt: typeof v.updatedAt === "string" ? v.updatedAt : ""
         };
         if (!isEmpty(entry)) entries[k] = entry;
@@ -127,7 +126,7 @@ export function firstWeekday(year, month) {
 
 export function getEntry(key) {
   const entry = state.entries[key];
-  if (!entry) return { text: "", mood: "", tags: [], updatedAt: "" };
+  if (!entry) return { text: "", mood: "", updatedAt: "" };
   return entry;
 }
 
@@ -141,7 +140,6 @@ export function updateEntry(key, patch) {
   const next = {
     text: patch.text !== undefined ? patch.text : current.text,
     mood: patch.mood !== undefined ? patch.mood : current.mood,
-    tags: patch.tags !== undefined ? patch.tags : current.tags,
     updatedAt: new Date().toISOString()
   };
   if (isEmpty(next)) {
@@ -235,8 +233,7 @@ export function exportMarkdown() {
   const parts = ["# 日记\n"];
   for (const entry of list) {
     const mood = MOODS.find((m) => m.id === entry.mood);
-    const tags = entry.tags.length ? ` · ${entry.tags.map((t) => `#${t}`).join(" ")}` : "";
-    parts.push(`## ${entry.key} ${weekday(entry.key)}${mood ? ` · ${mood.label}` : ""}${tags}\n`);
+    parts.push(`## ${entry.key} ${weekday(entry.key)}${mood ? ` · ${mood.label}` : ""}\n`);
     parts.push(`${entry.text.trim() || "（这天只标了心情）"}\n`);
   }
   return parts.join("\n");
@@ -252,7 +249,6 @@ export function importObject(raw) {
     const entry = {
       text: typeof v.text === "string" ? v.text : "",
       mood: MOODS.some((m) => m.id === v.mood) ? v.mood : "",
-      tags: Array.isArray(v.tags) ? v.tags.filter((t) => typeof t === "string").slice(0, 12) : [],
       updatedAt: typeof v.updatedAt === "string" ? v.updatedAt : ""
     };
     if (isEmpty(entry)) continue;
@@ -287,10 +283,7 @@ export function searchEntries(query) {
   const q = String(query || "").trim().toLowerCase();
   if (!q) return [];
   return allEntries()
-    .filter((entry) => {
-      if (entry.text.toLowerCase().includes(q)) return true;
-      return entry.tags.some((tag) => tag.toLowerCase().includes(q));
-    })
+    .filter((entry) => entry.text.toLowerCase().includes(q))
     .slice(0, 60);
 }
 

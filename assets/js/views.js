@@ -52,7 +52,7 @@ export function renderNav(route) {
     .join("");
 }
 
-export function renderWrite({ key, entry, isToday, prompt, echo, showPrompt, savedAt, tagDraft }) {
+export function renderWrite({ key, entry, isToday, echo, savedAt }) {
   const date = new Date(`${key}T00:00:00`);
   const month = date.getMonth() + 1;
   const day = date.getDate();
@@ -64,13 +64,6 @@ export function renderWrite({ key, entry, isToday, prompt, echo, showPrompt, sav
     (m) =>
       `<button class="mood${entry.mood === m.id ? " is-active" : ""}" type="button" data-mood="${m.id}" aria-pressed="${entry.mood === m.id}">${moodFace(m.id)}<span>${m.label}</span></button>`
   ).join("");
-
-  const tags = entry.tags
-    .map(
-      (t) =>
-        `<span class="tag">${escapeHtml(t)}<button type="button" data-remove-tag="${escapeAttr(t)}" aria-label="删掉标签">×</button></span>`
-    )
-    .join("");
 
   return `
     <article class="write">
@@ -85,19 +78,6 @@ export function renderWrite({ key, entry, isToday, prompt, echo, showPrompt, sav
 
       <div class="mood-row" role="group" aria-label="这天的心情">${moods}</div>
 
-      ${
-        showPrompt
-          ? `<section class="prompt-card">
-               <p class="prompt-label">不知道写什么</p>
-               <p id="prompt-text">${escapeHtml(prompt)}</p>
-               <div class="prompt-actions">
-                 <button class="link-btn" type="button" data-action="next-prompt">换一句</button>
-                 <button class="link-btn" type="button" data-action="dismiss-prompt">先不写</button>
-               </div>
-             </section>`
-          : ""
-      }
-
       <div class="editor-wrap">
         <textarea id="editor" class="editor" spellcheck="false" placeholder="今天……">${escapeHtml(entry.text)}</textarea>
       </div>
@@ -105,11 +85,6 @@ export function renderWrite({ key, entry, isToday, prompt, echo, showPrompt, sav
       <div class="write-foot">
         <span id="char-count">${chars} 字</span>
         <span class="saved" id="saved-state">${savedAt ? `已保存 · ${escapeHtml(savedAt)}` : ""}</span>
-      </div>
-
-      <div class="tag-row">
-        ${tags}
-        <input class="tag-input" id="tag-input" type="text" maxlength="12" placeholder="＋ 标签" aria-label="添加标签" value="${escapeAttr(tagDraft || "")}">
       </div>
 
       ${

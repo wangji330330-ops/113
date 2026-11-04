@@ -1,5 +1,5 @@
 /* 日记 · 离线缓存 */
-const CACHE = "riji-v1.1.0";
+const CACHE = "riji-v1.1.1";
 
 const CORE = [
   "./",
@@ -10,7 +10,6 @@ const CORE = [
   "./assets/js/main.js",
   "./assets/js/store.js",
   "./assets/js/views.js",
-  "./assets/js/prompts.js",
   "./assets/icons/icon-192.png",
   "./assets/icons/icon-512.png",
   "./assets/icons/apple-touch-icon.png",

@@ -24,7 +24,6 @@ import {
   todayKey,
   updateEntry
 } from "./store.js";
-import { pickPrompt } from "./prompts.js";
 import {
   escapeAttr,
   escapeHtml,
@@ -39,7 +38,7 @@ import {
   renderWrite
 } from "./views.js";
 
-const APP_VERSION = "1.1.0";
+const APP_VERSION = "1.1.1";
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
@@ -50,9 +49,6 @@ const ui = {
   calYear: new Date().getFullYear(),
   calMonth: new Date().getMonth() + 1,
   selectedKey: "",
-  prompt: pickPrompt(),
-  promptHidden: false,
-  tagDraft: "",
   search: "",
   savedAt: "",
   saveTimer: null
@@ -150,16 +146,12 @@ function render() {
 
 function viewWrite() {
   const entry = getEntry(ui.key);
-  const isEmpty = !entry.text.trim() && !entry.mood && !entry.tags.length;
   return renderWrite({
     key: ui.key,
     entry,
     isToday: ui.key === todayKey(),
-    prompt: ui.prompt,
     echo: findEcho(ui.key),
-    showPrompt: isEmpty && !ui.promptHidden,
     savedAt: ui.savedAt,
-    tagDraft: ui.tagDraft
   });
 }
 
@@ -254,54 +246,7 @@ function bindWrite() {
     });
   });
 
-  const tagInput = $("#tag-input");
-  if (tagInput) {
-    tagInput.addEventListener("keydown", (event) => {
-      if (event.key !== "Enter") return;
-      event.preventDefault();
-      const value = tagInput.value.trim().replace(/^#/, "");
-      if (!value) return;
-      const entry = getEntry(ui.key);
-      if (entry.tags.includes(value)) {
-        tagInput.value = "";
-        return;
-      }
-      updateEntry(ui.key, { tags: [...entry.tags, value].slice(0, 12) });
-      ui.tagDraft = "";
-      render();
-      const next = $("#tag-input");
-      if (next) next.focus();
-    });
-    tagInput.addEventListener("input", () => {
-      ui.tagDraft = tagInput.value;
-    });
-  }
-
-  $$("[data-remove-tag]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const tag = btn.dataset.removeTag;
-      const entry = getEntry(ui.key);
-      updateEntry(ui.key, { tags: entry.tags.filter((t) => t !== tag) });
-      render();
-    });
-  });
-
-  const promptActions = $$("[data-action]");
-  promptActions.forEach((btn) => {
-    if (btn.dataset.action === "next-prompt") {
-      btn.addEventListener("click", () => {
-        ui.prompt = pickPrompt();
-        const el = $("#prompt-text");
-        if (el) el.textContent = ui.prompt;
-      });
-    }
-    if (btn.dataset.action === "dismiss-prompt") {
-      btn.addEventListener("click", () => {
-        ui.promptHidden = true;
-        const card = $(".prompt-card");
-        if (card) card.remove();
-      });
-    }
+  $$("[data-action]").forEach((btn) => {
     if (btn.dataset.action === "open-echo") {
       btn.addEventListener("click", () => go(`write/${btn.dataset.key}`));
     }
@@ -414,10 +359,6 @@ function autoSize(el, reset = false) {
 
 function commitText(text) {
   const ok = updateEntry(ui.key, { text });
-  const entry = getEntry(ui.key);
-  const isEmpty = !entry.text.trim() && !entry.mood && !entry.tags.length;
-  const card = $(".prompt-card");
-  if (!isEmpty && card) card.remove();
   return ok !== undefined;
 }
 

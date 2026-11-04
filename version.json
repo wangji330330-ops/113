@@ -1,12 +1,12 @@
 {
-  "version": "1.1.0",
-  "build": 14,
+  "version": "1.1.1",
+  "build": 15,
   "releasedAt": "2026-11-05",
-  "title": "以后不用一直装 APK 了",
+  "title": "去掉引导句和标签",
   "notes": [
-    "Android 版改成从线上下载页面：改内容不用重新装 APK，打开就是最新版。",
-    "断网时用 Service Worker 缓存；缓存没有才退回安装包自带的那份。",
-    "只有外壳（权限、返回键、选文件）变了才需要装新 APK。"
+    "空白页不再弹「不知道写什么」，打开就是一张白纸。",
+    "去掉了标签：不再有标签输入框和标签块，搜索只搜正文。",
+    "这次只改了网页内容，APK 不用重装，重启 App 就是新版。"
   ],
   "webUrl": "https://wangji330330-ops.github.io/113/",
   "apkUrl": "https://wangji330330-ops.github.io/113/download/diary-v1.1.0-debug.apk",
