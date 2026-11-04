@@ -1,5 +1,5 @@
-/* 日记 · 离线缓存 */
-const CACHE = "riji-v1.1.2";
+/* 日记 · 离线缓存（网络优先：有网就拿最新的，没网才用缓存） */
+const CACHE = "riji-v1.1.3";
 
 const CORE = [
   "./",
@@ -20,7 +20,7 @@ self.addEventListener("install", (event) => {
   event.waitUntil(
     (async () => {
       const cache = await caches.open(CACHE);
-      await cache.addAll(CORE);
+      await cache.addAll(CORE).catch(() => {});
       await self.skipWaiting();
     })()
   );
@@ -42,37 +42,20 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(request.url);
   if (url.origin !== location.origin) return;
 
-  // 页面走网络优先，离线时回退缓存
-  if (request.mode === "navigate") {
-    event.respondWith(
-      (async () => {
-        try {
-          const fresh = await fetch(request);
-          const cache = await caches.open(CACHE);
-          cache.put("./index.html", fresh.clone());
-          return fresh;
-        } catch {
-          const cache = await caches.open(CACHE);
-          return (await cache.match("./index.html")) || Response.error();
-        }
-      })()
-    );
-    return;
-  }
-
-  // 静态资源走缓存优先
   event.respondWith(
     (async () => {
-      const cached = await caches.match(request);
-      if (cached) return cached;
+      const cache = await caches.open(CACHE);
       try {
         const fresh = await fetch(request);
-        if (fresh.ok) {
-          const cache = await caches.open(CACHE);
-          cache.put(request, fresh.clone());
-        }
+        if (fresh && fresh.ok) cache.put(request, fresh.clone());
         return fresh;
       } catch {
+        const cached = await cache.match(request, { ignoreSearch: true });
+        if (cached) return cached;
+        if (request.mode === "navigate") {
+          const shell = await cache.match("./index.html");
+          if (shell) return shell;
+        }
         return Response.error();
       }
     })()
