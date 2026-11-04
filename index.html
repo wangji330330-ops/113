@@ -13,7 +13,7 @@
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="icon" type="image/png" href="./assets/icons/favicon-64.png">
   <link rel="apple-touch-icon" href="./assets/icons/apple-touch-icon.png">
-  <link rel="stylesheet" href="./assets/css/app.css?v=1.1.4">
+  <link rel="stylesheet" href="./assets/css/app.css?v=1.1.5">
 </head>
 <body>
   <div class="app" id="app">
@@ -51,7 +51,7 @@
     // 一次性清掉旧版遗留的 Service Worker 与缓存，之后由 main.js 重新注册
     (function () {
       try {
-        if (localStorage.getItem("sw-reset-1.1.4")) return;
+        if (localStorage.getItem("sw-reset-1.1.5")) return;
         localStorage.setItem("sw-reset-1.1.4", "1");
         if ("serviceWorker" in navigator) {
           navigator.serviceWorker.getRegistrations().then(function (list) {

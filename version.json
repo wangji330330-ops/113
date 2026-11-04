@@ -1,13 +1,14 @@
 {
-  "version": "1.1.4",
-  "build": 18,
+  "version": "1.1.5",
+  "build": 19,
   "releasedAt": "2026-11-05",
-  "title": "导出会存到「下载」里",
+  "title": "导出直接告诉你文件路径",
   "notes": [
-    "以前在 App 里点导出没反应（WebView 不会自己下载）。现在会存到手机的「下载」文件夹，并告诉你存到哪儿了。",
-    "网页版还是走浏览器的下载目录。"
+    "导出后显示完整路径，例如 /storage/emulated/0/Download/日记备份-2026-11-05.json 。",
+    "文件确实写在手机的「下载 / Download」文件夹里。",
+    "旧版本装不了文件时，不再提示去浏览器找，而是直接说需要升级。"
   ],
   "webUrl": "https://wangji330330-ops.github.io/113/",
-  "apkUrl": "https://wangji330330-ops.github.io/113/download/diary-v1.1.4-debug.apk",
+  "apkUrl": "https://wangji330330-ops.github.io/113/download/diary-v1.1.5-debug.apk",
   "releaseUrl": "https://github.com/wangji330330-ops/113/releases"
 }

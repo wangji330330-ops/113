@@ -38,7 +38,7 @@ import {
   renderWrite
 } from "./views.js";
 
-const APP_VERSION = "1.1.4";
+const APP_VERSION = "1.1.5";
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
@@ -425,7 +425,11 @@ function downloadFile(name, content, type) {
   a.click();
   a.remove();
   window.setTimeout(() => URL.revokeObjectURL(url), 3000);
-  toast("已经导出，去浏览器的下载里找。", 3200);
+  if (window.GlimmerAndroid) {
+    toast("这个 App 版本还不能直接存文件，装 1.1.5 之后就会存到「下载」并显示路径。", 5200);
+  } else {
+    toast("已经导出，去浏览器的下载里找。", 3200);
+  }
 }
 
 function pickFile() {

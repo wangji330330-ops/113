@@ -252,7 +252,8 @@ public class MainActivity extends Activity {
                     values.clear();
                     values.put(MediaStore.Downloads.IS_PENDING, 0);
                     getContentResolver().update(uri, values, null, null);
-                    return "下载/" + safeName;
+                    return Environment.getExternalStorageDirectory().getAbsolutePath()
+                            + "/Download/" + safeName;
                 }
                 File dir = getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS);
                 if (dir == null) return "";
