@@ -1013,3 +1013,58 @@ svg:not([width]):not([height]) {
 }
 
 .search__foot { margin-top: 14px; }
+
+/* ==========================================================================
+   点击手感：不要灰块，不要误选文字
+   ========================================================================== */
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+input,
+textarea,
+.editor,
+.echo__text,
+.cal-preview__text,
+.search-hit__text {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* 选中态轻一点：只换底色，不加边框 */
+.mood.is-active {
+  border-color: transparent;
+  box-shadow: inset 0 0 0 1px rgba(169, 112, 63, .16);
+}
+
+.nav-item.is-active {
+  background: rgba(169, 112, 63, .1);
+  color: var(--accent-ink);
+  font-weight: 500;
+}
+
+/* 手机：键盘弹出时别让编辑区顶得太高 */
+@media (max-width: 900px) {
+  .editor {
+    min-height: 32vh;
+    font-size: 16px;
+  }
+
+  html {
+    scroll-padding-bottom: 45vh;
+  }
+}

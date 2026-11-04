@@ -39,7 +39,7 @@ import {
   renderWrite
 } from "./views.js";
 
-const APP_VERSION = "1.0.1";
+const APP_VERSION = "1.0.2";
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
@@ -218,7 +218,7 @@ function bind() {
 function bindWrite() {
   const editor = $("#editor");
   if (!editor) return;
-  autoSize(editor);
+  autoSize(editor, true);
   editor.addEventListener("input", () => {
     autoSize(editor);
     const chars = editor.value.replace(/\s/g, "").length;
@@ -406,9 +406,10 @@ function bindMe() {
 
 /* ---------------------------------------------------------------- 保存 */
 
-function autoSize(el) {
-  el.style.height = "auto";
-  el.style.height = `${Math.max(el.scrollHeight, 240)}px`;
+function autoSize(el, reset = false) {
+  if (reset) el.style.height = "auto";
+  const target = Math.max(el.scrollHeight, 240);
+  if (target > el.clientHeight + 2) el.style.height = `${target}px`;
 }
 
 function commitText(text) {

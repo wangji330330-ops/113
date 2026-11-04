@@ -1,13 +1,14 @@
 {
-  "version": "1.0.1",
-  "build": 11,
+  "version": "1.0.2",
+  "build": 12,
   "releasedAt": "2026-11-05",
-  "title": "修好手机上的导航",
+  "title": "点起来安静一点，键盘顺一点",
   "notes": [
-    "修好手机上点左上角三横杠后，抽屉里的「日历」「我」点不动的问题。",
-    "遮罩挪进应用容器里，抽屉现在在遮罩之上，点菜单项能正常跳转。"
+    "去掉点击时那层灰色的选中提示，点按钮不再闪一下。",
+    "界面上的文字不会再被误选中（正文和输入框照常可以选）。",
+    "键盘弹出改成压缩窗口，不再把整页往上推。"
   ],
   "webUrl": "https://wangji330330-ops.github.io/113/",
-  "apkUrl": "https://wangji330330-ops.github.io/113/download/diary-v1.0.1-debug.apk",
+  "apkUrl": "https://wangji330330-ops.github.io/113/download/diary-v1.0.2-debug.apk",
   "releaseUrl": "https://github.com/wangji330330-ops/113/releases"
 }

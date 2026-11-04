@@ -1,5 +1,5 @@
 /* 日记 · 离线缓存 */
-const CACHE = "riji-v1.0.1";
+const CACHE = "riji-v1.0.2";
 
 const CORE = [
   "./",
