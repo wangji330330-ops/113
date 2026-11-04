@@ -1068,3 +1068,94 @@ a {
     scroll-padding-bottom: 45vh;
   }
 }
+
+/* ==========================================================================
+   触摸反馈：按下有回应，松手回弹；不要卡在 hover 状态
+   ========================================================================== */
+
+.btn,
+.row,
+.nav-item,
+.mood,
+.cal-cell,
+.search-hit,
+.cal-nav button,
+.topbar__menu,
+.link-btn,
+.rail__brand {
+  transition:
+    opacity .12s ease,
+    background-color .15s ease,
+    border-color .15s ease,
+    color .15s ease;
+}
+
+.btn:active,
+.row:active,
+.nav-item:active,
+.mood:active,
+.cal-cell:active,
+.search-hit:active,
+.cal-nav button:active,
+.topbar__menu:active,
+.link-btn:active,
+.rail__brand:active {
+  opacity: .55;
+}
+
+/* 没有真鼠标的设备：hover 样式一律不生效，避免点完停在“选中”状态 */
+@media (hover: none) {
+  .nav-item:hover {
+    background: transparent;
+    color: var(--ink-2);
+  }
+
+  .nav-item.is-active:hover {
+    background: rgba(169, 112, 63, .1);
+    color: var(--accent-ink);
+  }
+
+  .mood:hover {
+    border-color: var(--line);
+  }
+
+  .mood.is-active:hover {
+    border-color: transparent;
+  }
+
+  .btn:hover {
+    border-color: var(--line);
+  }
+
+  .btn--primary:hover {
+    filter: none;
+  }
+
+  .cal-nav button:hover {
+    border-color: var(--line);
+  }
+
+  .cal-cell:hover {
+    border-color: var(--line-2);
+  }
+
+  .cal-cell.is-today:hover {
+    border-color: var(--accent);
+  }
+
+  .row:hover {
+    background: none;
+  }
+
+  .row:hover .row__end svg {
+    color: var(--muted);
+  }
+
+  .search-hit:hover {
+    border-color: var(--line-2);
+  }
+
+  .link-btn:hover {
+    text-decoration: none;
+  }
+}

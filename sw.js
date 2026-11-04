@@ -1,5 +1,5 @@
 /* 日记 · 离线缓存（网络优先：有网就拿最新的，没网才用缓存） */
-const CACHE = "riji-v1.1.5";
+const CACHE = "riji-v1.1.6";
 
 const CORE = [
   "./",
