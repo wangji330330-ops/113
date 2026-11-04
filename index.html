@@ -3,71 +3,49 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>日记 · 一点点也算数</title>
-  <meta name="description" content="一个不催你的日记本。写一句，记一件小事，都算数。">
-  <meta property="og:type" content="website">
-  <meta property="og:title" content="日记 · 一点点也算数">
-  <meta property="og:description" content="一个不催你的日记本。写一句，记一件小事，都算数。">
-  <meta property="og:image" content="./assets/icons/icon-512.png">
-  <meta name="theme-color" content="#fbf6f0">
-  <meta name="color-scheme" content="light">
+  <title>日记</title>
+  <meta name="description" content="一页一天。写了就算数，没写也不会被催。">
+  <meta name="theme-color" content="#fbf7f1">
+  <meta name="color-scheme" content="light dark">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="日记">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="icon" type="image/png" href="./assets/icons/favicon-64.png">
   <link rel="apple-touch-icon" href="./assets/icons/apple-touch-icon.png">
-  <link rel="stylesheet" href="./assets/css/style.css">
-  <link rel="stylesheet" href="./assets/css/theme-v2.css">
+  <link rel="stylesheet" href="./assets/css/app.css">
 </head>
-<body class="is-booting">
-  <div class="world" aria-hidden="true">
-    <div class="world__glow"></div>
-    <div class="world__grid"></div>
-    <div class="world__vignette"></div>
-  </div>
-
-  <div id="app" class="app-shell">
-    <div id="nav-scrim" class="nav-scrim" data-action="close-nav" hidden></div>
-    <aside id="side-nav" class="side-nav" aria-label="主导航">
-      <a class="side-brand" href="#/today" data-nav aria-label="日记首页">
-        <span class="side-brand__mark" aria-hidden="true">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-            <rect x="4.5" y="3.5" width="15" height="17" rx="4.5"/>
-            <path d="M8.6 9.4h6.8M8.6 14.6h4.4"/>
+<body>
+  <div class="app" id="app">
+    <aside class="rail" id="rail">
+      <a class="rail__brand" href="#/write" data-nav>
+        <span class="rail__mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M5 4.5h11.5A2.5 2.5 0 0 1 19 7v13H7.5A2.5 2.5 0 0 1 5 17.5z"/>
+            <path d="M5 17.5A2.5 2.5 0 0 1 7.5 15H19"/>
           </svg>
         </span>
-        <span class="side-brand__text">
-          <strong>日记</strong>
-          <small>一点点也算数</small>
-        </span>
+        <span class="rail__name">日记</span>
       </a>
-      <nav id="bottom-nav" class="nav-list" aria-label="页面"></nav>
-      <div id="side-foot" class="side-foot"></div>
+      <nav class="rail__nav" id="nav"></nav>
+      <p class="rail__foot" id="rail-foot"></p>
     </aside>
 
-    <div class="app-main">
-      <header id="app-bar" class="app-bar"></header>
-      <main id="page" class="page" tabindex="-1"></main>
-    </div>
+    <main class="main">
+      <header class="topbar">
+        <button class="topbar__menu" id="menu-btn" type="button" aria-label="打开导航" aria-expanded="false" aria-controls="rail">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+        </button>
+        <h1 class="topbar__title" id="topbar-title">写</h1>
+      </header>
+      <div class="page" id="page" tabindex="-1"></div>
+    </main>
   </div>
 
-  <div id="modal-root" class="modal-root" hidden></div>
-  <div id="toast-root" class="toast-root" role="status" aria-live="polite"></div>
-  <div id="fx-root" class="fx-root" aria-hidden="true"></div>
-  <div id="page-wipe" class="page-wipe" aria-hidden="true"></div>
+  <div class="scrim" id="scrim" hidden></div>
+  <div class="modal-root" id="modal-root" hidden></div>
+  <div class="toast-root" id="toast-root" role="status" aria-live="polite"></div>
 
-  <div id="boot" class="boot" aria-hidden="true">
-    <div class="boot__lantern">
-      <span></span><span></span><span></span><span></span>
-    </div>
-    <p>正在翻开本子<span class="boot__dots">...</span></p>
-  </div>
-
-  <noscript>
-    <div class="noscript">日记需要 JavaScript 才能打开，请在浏览器设置中开启。</div>
-  </noscript>
-
-  <script type="module" src="./assets/js/app.js"></script>
+  <script type="module" src="./assets/js/main.js"></script>
 </body>
 </html>

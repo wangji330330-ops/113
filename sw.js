@@ -1,25 +1,16 @@
-/* 日记 offline cache */
-const CACHE = "diary-v0.5.3";
-const FONT_CSS = "./assets/css/theme-v2.css";
+/* 日记 · 离线缓存 */
+const CACHE = "riji-v1.0.0";
+
 const CORE = [
   "./",
   "./index.html",
   "./manifest.webmanifest",
-  "./assets/css/style.css",
   "./version.json",
-  "./assets/js/app.js",
-  "./assets/js/audio.js",
-  "./assets/js/chat.js",
-  "./assets/js/companion.js",
-  "./assets/js/data.js",
-  "./assets/js/helpers.js",
-  "./assets/js/icons.js",
-  "./assets/js/place-data.js",
+  "./assets/css/app.css",
+  "./assets/js/main.js",
   "./assets/js/store.js",
-  "./assets/js/updater.js",
   "./assets/js/views.js",
-  "./assets/js/scene-art.js",
-  FONT_CSS,
+  "./assets/js/prompts.js",
   "./assets/icons/icon-192.png",
   "./assets/icons/icon-512.png",
   "./assets/icons/apple-touch-icon.png",
@@ -27,68 +18,64 @@ const CORE = [
 ];
 
 self.addEventListener("install", (event) => {
-  event.waitUntil((async () => {
-    const cache = await caches.open(CACHE);
-    await cache.addAll(CORE);
-    // Font subsets are cached on demand by the fetch handler below.
-    await self.skipWaiting();
-  })());
+  event.waitUntil(
+    (async () => {
+      const cache = await caches.open(CACHE);
+      await cache.addAll(CORE);
+      await self.skipWaiting();
+    })()
+  );
 });
 
 self.addEventListener("activate", (event) => {
-  event.waitUntil((async () => {
-    const keys = await caches.keys();
-    await Promise.all(keys.filter((key) => key !== CACHE).map((key) => caches.delete(key)));
-    await self.clients.claim();
-  })());
+  event.waitUntil(
+    (async () => {
+      const keys = await caches.keys();
+      await Promise.all(keys.filter((key) => key !== CACHE).map((key) => caches.delete(key)));
+      await self.clients.claim();
+    })()
+  );
 });
 
 self.addEventListener("fetch", (event) => {
-  const request = event.request;
+  const { request } = event;
   if (request.method !== "GET") return;
   const url = new URL(request.url);
-  if (url.origin !== self.location.origin) return;
+  if (url.origin !== location.origin) return;
 
-  if (url.pathname.endsWith("/version.json")) {
-    event.respondWith((async () => {
-      try {
-        const response = await fetch(request, { cache: "no-store" });
-        const cache = await caches.open(CACHE);
-        cache.put(request, response.clone());
-        return response;
-      } catch {
-        return (await caches.match(request)) || Response.error();
-      }
-    })());
-    return;
-  }
-
+  // 页面走网络优先，离线时回退缓存
   if (request.mode === "navigate") {
-    event.respondWith((async () => {
-      try {
-        const response = await fetch(request);
-        const cache = await caches.open(CACHE);
-        cache.put(request, response.clone());
-        return response;
-      } catch {
-        return (await caches.match(request)) || (await caches.match("./index.html")) || Response.error();
-      }
-    })());
+    event.respondWith(
+      (async () => {
+        try {
+          const fresh = await fetch(request);
+          const cache = await caches.open(CACHE);
+          cache.put("./index.html", fresh.clone());
+          return fresh;
+        } catch {
+          const cache = await caches.open(CACHE);
+          return (await cache.match("./index.html")) || Response.error();
+        }
+      })()
+    );
     return;
   }
 
-  event.respondWith((async () => {
-    const cached = await caches.match(request);
-    if (cached) return cached;
-    try {
-      const response = await fetch(request);
-      if (response.ok) {
-        const cache = await caches.open(CACHE);
-        cache.put(request, response.clone());
+  // 静态资源走缓存优先
+  event.respondWith(
+    (async () => {
+      const cached = await caches.match(request);
+      if (cached) return cached;
+      try {
+        const fresh = await fetch(request);
+        if (fresh.ok) {
+          const cache = await caches.open(CACHE);
+          cache.put(request, fresh.clone());
+        }
+        return fresh;
+      } catch {
+        return Response.error();
       }
-      return response;
-    } catch {
-      return Response.error();
-    }
-  })());
+    })()
+  );
 });

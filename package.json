@@ -1,8 +1,8 @@
 {
   "name": "diary",
-  "version": "0.5.3",
+  "version": "1.0.0",
   "private": true,
-  "description": "日记 · 一个不催你的日记本",
+  "description": "日记 · 一页一天",
   "scripts": {
     "start": "node scripts/serve.js",
     "icons": "node scripts/make-icons.js"

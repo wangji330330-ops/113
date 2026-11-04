@@ -1,710 +1,301 @@
-import {
-  STORE_KEY,
-  STARTER_HABITS,
-  STARTER_REWARDS,
-  EFFORTS,
-  ENERGY,
-  MEMORY_KINDS,
-  CONDITION_TYPES,
-  levelFor
-} from "./data.js";
+/*
+ * 本地数据。
+ * 所有内容只存在这台设备的 localStorage 里，不上传。
+ */
 
-const MAX_DONE_PER_DAY = 60;
+const KEY = "riji:v1";
+const LEGACY = ["glimmer-nook:v1", "glimmer-nook:deepseek", "glimmer-nook:chat"];
 
-export function uid(prefix = "id") {
-  if (globalThis.crypto && typeof globalThis.crypto.randomUUID === "function") {
-    return `${prefix}_${globalThis.crypto.randomUUID()}`;
-  }
-  return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 9)}`;
-}
+const WEEK = ["星期日", "星期一", "星期二", "星期三", "星期四", "星期五", "星期六"];
 
-export function dateKey(date = new Date()) {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
+const MOODS = [
+  { id: "low", label: "低落" },
+  { id: "meh", label: "平静" },
+  { id: "ok", label: "还行" },
+  { id: "good", label: "不错" },
+  { id: "great", label: "很好" }
+];
 
-export function dateFromKey(key) {
-  const [year, month, day] = String(key).split("-").map(Number);
-  return new Date(year, month - 1, day, 12, 0, 0, 0);
-}
+let state = load();
 
-export function addDays(key, amount) {
-  const date = dateFromKey(key);
-  date.setDate(date.getDate() + amount);
-  return dateKey(date);
-}
-
-export function monthKey(date = new Date()) {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
-}
-
-export function isToday(key) {
-  return key === dateKey();
-}
-
-function nowIso() {
-  return new Date().toISOString();
-}
-
-function clampText(value, max) {
-  return String(value ?? "").replace(/\s+/g, " ").trim().slice(0, max);
-}
-
-function cleanNote(value) {
-  return String(value ?? "")
-    .replace(/\r\n?/g, "\n")
-    .replace(/\u0000/g, "")
-    .slice(0, 200000)
-    .replace(/^\n+|\n+$/g, "");
-}
-
-function safeId(value, prefix) {
-  const id = String(value || "");
-  return /^[A-Za-z0-9_-]{1,80}$/.test(id) ? id : uid(prefix);
-}
-
-function makeHabit(seed = {}) {
-  const effort = Number(seed.effort) in EFFORTS ? Number(seed.effort) : 2;
-  return {
-    id: safeId(seed.id, "habit"),
-    name: clampText(seed.name, 30) || "一件小事",
-    icon: seed.icon || "spark",
-    effort,
-    active: seed.active !== false,
-    createdAt: seed.createdAt || nowIso(),
-    updatedAt: seed.updatedAt || nowIso()
-  };
-}
-
-function makeReward(seed = {}) {
-  const type = seed.condition && CONDITION_TYPES[seed.condition.type]
-    ? seed.condition.type
-    : "days";
-  const value = Math.max(1, Math.min(9999, Math.round(Number(seed.condition?.value)) || CONDITION_TYPES[type].default));
-  return {
-    id: safeId(seed.id, "reward"),
-    title: clampText(seed.title, 40) || "给自己的小奖励",
-    note: clampText(seed.note, 120),
-    icon: seed.icon || "gift",
-    condition: { type, value },
-    createdAt: seed.createdAt || nowIso(),
-    updatedAt: seed.updatedAt || nowIso(),
-    unlockedAt: seed.unlockedAt || null,
-    claimedAt: seed.claimedAt || null
-  };
-}
-
-function makeMemory(raw = {}) {
-  const text = clampText(raw.text, 80).replace(/[。！？?!，,；;]+$/g, "").trim();
-  if (!text) return null;
-  return {
-    id: safeId(raw.id, "memory"),
-    text,
-    kind: MEMORY_KINDS[raw.kind] ? raw.kind : "care",
-    source: ["manual", "chat", "diary", "quiet"].includes(raw.source) ? raw.source : "manual",
-    createdAt: raw.createdAt || nowIso(),
-    updatedAt: raw.updatedAt || nowIso()
-  };
-}
-
-function makeLogEntry(raw = {}) {
-  const energy = Object.prototype.hasOwnProperty.call(ENERGY, raw.energy) ? raw.energy : null;
-  const seen = new Set();
-  const done = [];
-  if (Array.isArray(raw.done)) {
-    for (const item of raw.done.slice(0, MAX_DONE_PER_DAY)) {
-      const habitId = typeof item === "string" ? item : item?.habitId;
-      if (!habitId || seen.has(habitId)) continue;
-      seen.add(habitId);
-      const points = Math.max(1, Math.min(3, Math.round(Number(item?.points)) || 1));
-      done.push({ habitId: String(habitId), points, at: item?.at || nowIso() });
-    }
-  }
-  return {
-    energy,
-    done,
-    rest: Boolean(raw.rest),
-    restAt: raw.restAt || null,
-    note: cleanNote(raw.note),
-    noteAt: raw.noteAt || null
-  };
-}
-
-function createInitialState() {
-  const now = nowIso();
+function blankState() {
   return {
     version: 1,
-    profile: {
-      name: "",
-      createdAt: now,
-      onboarded: false,
-      look: {},
-      avatar: "",
-      avatarImage: ""
-    },
-    settings: {
-      sound: true,
-      motion: true
-    },
-    habits: STARTER_HABITS.map((habit) => makeHabit({ ...habit, createdAt: now })),
-    rewards: STARTER_REWARDS.map((reward) => makeReward({ ...reward, createdAt: now })),
-    memories: [],
-    logs: {},
-    meta: {
-      lastOpenAt: now,
-      updatedAt: now
-    }
+    entries: {},
+    settings: { theme: "auto", font: "m" }
   };
 }
 
-function sanitizeState(raw, { strict = false } = {}) {
-  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
-    throw new Error("这不是一份日记的备份。");
-  }
-  if (strict && (!Array.isArray(raw.habits) || !Array.isArray(raw.rewards) || typeof raw.logs !== "object")) {
-    throw new Error("备份文件缺少必要的数据。");
-  }
-  const base = createInitialState();
-  const profile = raw.profile && typeof raw.profile === "object" ? raw.profile : {};
-  const settings = raw.settings && typeof raw.settings === "object" ? raw.settings : {};
-  const habits = Array.isArray(raw.habits)
-    ? raw.habits.filter((habit) => habit && typeof habit === "object").map(makeHabit)
-    : base.habits;
-  const rewards = Array.isArray(raw.rewards)
-    ? raw.rewards.filter((reward) => reward && typeof reward === "object").map(makeReward)
-    : base.rewards;
-  const logs = {};
-  if (raw.logs && typeof raw.logs === "object" && !Array.isArray(raw.logs)) {
-    for (const [key, entry] of Object.entries(raw.logs)) {
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(key)) continue;
-      logs[key] = makeLogEntry(entry && typeof entry === "object" ? entry : {});
-    }
-  }
-  const memories = Array.isArray(raw.memories)
-    ? raw.memories.filter((memory) => memory && typeof memory === "object").map(makeMemory).filter(Boolean).slice(-120)
-    : [];
-  return {
-    version: 1,
-    profile: {
-      name: clampText(profile.name, 20),
-      createdAt: profile.createdAt || base.profile.createdAt,
-      onboarded: Boolean(profile.onboarded),
-      look: profile.look && typeof profile.look === "object" ? profile.look : {},
-      avatar: typeof profile.avatar === "string" ? profile.avatar.slice(0, 24) : "",
-      avatarImage: typeof profile.avatarImage === "string" && profile.avatarImage.startsWith("data:image/")
-        ? profile.avatarImage.slice(0, 400000)
-        : ""
-    },
-    settings: {
-      sound: settings.sound !== false,
-      motion: settings.motion !== false
-    },
-    habits,
-    rewards,
-    memories,
-    logs,
-    meta: {
-      lastOpenAt: nowIso(),
-      updatedAt: nowIso()
-    }
-  };
+function isEmpty(entry) {
+  return !entry.text.trim() && !entry.mood && !entry.tags.length;
 }
 
-function loadState() {
-  if (typeof localStorage === "undefined") return createInitialState();
-  let raw = null;
+function load() {
   try {
-    raw = localStorage.getItem(STORE_KEY);
+    const raw = JSON.parse(localStorage.getItem(KEY) || "null");
+    if (!raw || typeof raw !== "object") return blankState();
+    const base = blankState();
+    const entries = {};
+    if (raw.entries && typeof raw.entries === "object") {
+      for (const [k, v] of Object.entries(raw.entries)) {
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(k) || !v || typeof v !== "object") continue;
+        const entry = {
+          text: typeof v.text === "string" ? v.text : "",
+          mood: MOODS.some((m) => m.id === v.mood) ? v.mood : "",
+          tags: Array.isArray(v.tags) ? v.tags.filter((t) => typeof t === "string").slice(0, 12) : [],
+          updatedAt: typeof v.updatedAt === "string" ? v.updatedAt : ""
+        };
+        if (!isEmpty(entry)) entries[k] = entry;
+      }
+    }
+    const settings = {
+      theme: ["auto", "light", "dark"].includes(raw.settings?.theme) ? raw.settings.theme : "auto",
+      font: ["s", "m", "l"].includes(raw.settings?.font) ? raw.settings.font : "m"
+    };
+    return { ...base, entries, settings };
   } catch {
-    return createInitialState();
-  }
-  if (!raw) return createInitialState();
-  try {
-    const parsed = JSON.parse(raw);
-    return sanitizeState(parsed);
-  } catch (error) {
-    console.warn("日记：本地数据读取失败，已保留原数据副本。", error);
-    try {
-      localStorage.setItem(`${STORE_KEY}:broken`, raw);
-    } catch {
-      /* storage might be full or blocked */
-    }
-    return createInitialState();
+    return blankState();
   }
 }
-
-let state = loadState();
 
 function persist() {
-  if (typeof localStorage === "undefined") return;
   try {
-    state.meta.updatedAt = nowIso();
-    state.meta.lastOpenAt = nowIso();
-    localStorage.setItem(STORE_KEY, JSON.stringify(state));
-  } catch (error) {
-    console.warn("日记：暂时无法保存数据。", error);
+    localStorage.setItem(KEY, JSON.stringify(state));
+  } catch {
+    return false;
+  }
+  return true;
+}
+
+export function removeLegacyData() {
+  for (const k of LEGACY) {
+    try {
+      localStorage.removeItem(k);
+    } catch {
+      /* ignore */
+    }
   }
 }
 
-export function getState() {
-  return state;
+/* ---------------------------------------------------------------- 日期 */
+
+export function dateKey(date = new Date()) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
 }
 
-export function ensureTodayLog() {
-  return ensureLog(dateKey());
+export function todayKey() {
+  return dateKey(new Date());
 }
 
-export function ensureLog(key) {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(key))) return ensureLog(dateKey());
-  if (!state.logs[key]) {
-    state.logs[key] = makeLogEntry({});
+export function parseKey(key) {
+  const [y, m, d] = key.split("-").map(Number);
+  return new Date(y, (m || 1) - 1, d || 1);
+}
+
+export function weekday(key) {
+  return WEEK[parseKey(key).getDay()];
+}
+
+export function relativeLabel(key) {
+  const today = todayKey();
+  if (key === today) return "今天";
+  const diff = Math.round((parseKey(today) - parseKey(key)) / 86400000);
+  if (diff === 1) return "昨天";
+  if (diff === 2) return "前天";
+  if (diff === -1) return "明天";
+  return "";
+}
+
+export function dayOfYear(key) {
+  const date = parseKey(key);
+  const start = new Date(date.getFullYear(), 0, 1);
+  return Math.floor((date - start) / 86400000) + 1;
+}
+
+export function daysInMonth(year, month) {
+  return new Date(year, month, 0).getDate();
+}
+
+export function firstWeekday(year, month) {
+  return new Date(year, month - 1, 1).getDay();
+}
+
+/* ---------------------------------------------------------------- 读写 */
+
+export function getEntry(key) {
+  const entry = state.entries[key];
+  if (!entry) return { text: "", mood: "", tags: [], updatedAt: "" };
+  return entry;
+}
+
+export function hasEntry(key) {
+  const entry = state.entries[key];
+  return Boolean(entry && !isEmpty(entry));
+}
+
+export function updateEntry(key, patch) {
+  const current = getEntry(key);
+  const next = {
+    text: patch.text !== undefined ? patch.text : current.text,
+    mood: patch.mood !== undefined ? patch.mood : current.mood,
+    tags: patch.tags !== undefined ? patch.tags : current.tags,
+    updatedAt: new Date().toISOString()
+  };
+  if (isEmpty(next)) {
+    delete state.entries[key];
+  } else {
+    state.entries[key] = next;
   }
-  return state.logs[key];
-}
-
-export function getLog(key = dateKey()) {
-  return state.logs[key] || null;
-}
-
-export function setProfileName(name) {
-  state.profile.name = clampText(name, 20);
   persist();
-  return state.profile.name;
+  return next;
 }
 
-export function setLook(look) {
-  state.profile.look = look && typeof look === "object" ? look : {};
-  persist();
-  return state.profile.look;
+export function allEntries() {
+  return Object.keys(state.entries)
+    .sort()
+    .reverse()
+    .map((key) => ({ key, ...state.entries[key] }));
 }
 
-export function getLook() {
-  return state.profile.look || {};
+export function entryCount() {
+  return Object.keys(state.entries).length;
 }
 
-export function setAvatar(id) {
-  state.profile.avatar = String(id || "").slice(0, 24);
-  persist();
-  return state.profile.avatar;
+/* ---------------------------------------------------------------- 统计 */
+
+export function stats() {
+  const keys = Object.keys(state.entries).sort();
+  let chars = 0;
+  for (const key of keys) chars += state.entries[key].text.replace(/\s/g, "").length;
+
+  const today = todayKey();
+  let streak = 0;
+  const cursor = parseKey(today);
+  let first = true;
+  while (true) {
+    const k = dateKey(cursor);
+    if (state.entries[k] && !isEmpty(state.entries[k])) {
+      streak += 1;
+      cursor.setDate(cursor.getDate() - 1);
+      first = false;
+      continue;
+    }
+    if (first) {
+      // 今天还没写，不算断
+      cursor.setDate(cursor.getDate() - 1);
+      first = false;
+      continue;
+    }
+    break;
+  }
+
+  const monthPrefix = today.slice(0, 7);
+  const monthCount = keys.filter((k) => k.startsWith(monthPrefix)).length;
+
+  return {
+    days: keys.length,
+    chars,
+    streak,
+    monthCount,
+    firstKey: keys[0] || "",
+    lastKey: keys[keys.length - 1] || ""
+  };
 }
 
-export function setAvatarImage(dataUrl) {
-  state.profile.avatarImage = String(dataUrl || "").slice(0, 400000);
-  persist();
-  return state.profile.avatarImage;
-}
+/* ---------------------------------------------------------------- 设置 */
 
-export function getAvatarImage() {
-  return state.profile.avatarImage || "";
-}
-
-export function getAvatar() {
-  return state.profile.avatar || "";
-}
-
-export function completeOnboarding(name) {
-  state.profile.name = clampText(name, 20);
-  state.profile.onboarded = true;
-  persist();
+export function getSettings() {
+  return { ...state.settings };
 }
 
 export function setSetting(key, value) {
-  if (key !== "sound" && key !== "motion") return;
-  state.settings[key] = Boolean(value);
+  if (!(key in state.settings)) return;
+  state.settings[key] = value;
   persist();
 }
 
-export function setEnergy(energy) {
-  const log = ensureTodayLog();
-  log.energy = Object.prototype.hasOwnProperty.call(ENERGY, energy) ? energy : null;
-  persist();
-  return log.energy;
-}
+/* ---------------------------------------------------------------- 导入导出 */
 
-export function setNote(note, key = dateKey()) {
-  const log = ensureLog(key);
-  log.note = cleanNote(note);
-  log.noteAt = log.note ? nowIso() : null;
-  persist();
-  return log.note;
-}
-
-export function setNoteForDate(key, note) {
-  return setNote(note, key);
-}
-
-export function getNoteForDate(key = dateKey()) {
-  return state.logs[key]?.note || "";
-}
-
-export function getDiaryEntries() {
-  return Object.entries(state.logs)
-    .filter(([, log]) => Boolean(log.note && log.note.trim()))
-    .map(([date, log]) => ({
-      date,
-      note: log.note,
-      noteAt: log.noteAt,
-      doneCount: Array.isArray(log.done) ? log.done.length : 0,
-      rest: Boolean(log.rest),
-      energy: log.energy || null
-    }))
-    .sort((a, b) => b.date.localeCompare(a.date));
-}
-
-export function getMemories() {
-  return state.memories
-    .map((memory) => ({ ...memory }))
-    .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-}
-
-export function addMemory(text, kind = "care", source = "manual") {
-  const memory = makeMemory({ text, kind, source });
-  if (!memory) return null;
-  const existing = state.memories.find((item) => item.text === memory.text);
-  if (existing) return { ...existing, duplicate: true };
-  state.memories.push(memory);
-  if (state.memories.length > 120) state.memories.shift();
-  persist();
-  return memory;
-}
-
-export function updateMemory(id, patch = {}) {
-  const memory = state.memories.find((item) => item.id === id);
-  if (!memory) return null;
-  if (Object.prototype.hasOwnProperty.call(patch, "text")) {
-    const text = clampText(patch.text, 80).replace(/[。！？?!，,；;]+$/g, "").trim();
-    if (!text) return null;
-    memory.text = text;
-  }
-  if (MEMORY_KINDS[patch.kind]) memory.kind = patch.kind;
-  memory.updatedAt = nowIso();
-  persist();
-  return { ...memory };
-}
-
-export function removeMemory(id) {
-  const before = state.memories.length;
-  state.memories = state.memories.filter((memory) => memory.id !== id);
-  if (state.memories.length !== before) {
-    persist();
-    return true;
-  }
-  return false;
-}
-
-export function getMemoryPrompt(limit = 12, maxChars = 900) {
-  const list = getMemories()
-    .slice(0, limit)
-    .map((memory) => `${MEMORY_KINDS[memory.kind]?.label || "记得"}：${memory.text}`);
-  return list.join("；").slice(0, maxChars);
-}
-
-function activeDayKeys() {
-  return Object.entries(state.logs)
-    .filter(([, log]) => (Array.isArray(log.done) && log.done.length > 0) || log.rest)
-    .map(([key]) => key)
-    .sort();
-}
-
-export function getStats() {
-  const keys = activeDayKeys();
-  const activeSet = new Set(keys);
-  let totalTasks = 0;
-  let totalPoints = 0;
-  const tasksByHabit = {};
-  for (const log of Object.values(state.logs)) {
-    if (!Array.isArray(log.done)) continue;
-    totalTasks += log.done.length;
-    for (const entry of log.done) {
-      totalPoints += Number(entry.points) || 0;
-      tasksByHabit[entry.habitId] = (tasksByHabit[entry.habitId] || 0) + 1;
-    }
-  }
-
-  const today = dateKey();
-  let cursor = activeSet.has(today) ? today : addDays(today, -1);
-  let currentStreak = 0;
-  while (activeSet.has(cursor)) {
-    currentStreak += 1;
-    cursor = addDays(cursor, -1);
-  }
-
-  let longestStreak = 0;
-  let run = 0;
-  let previous = null;
-  for (const key of keys) {
-    run = previous && addDays(previous, 1) === key ? run + 1 : 1;
-    longestStreak = Math.max(longestStreak, run);
-    previous = key;
-  }
-
-  const thisMonth = monthKey();
-  const monthActiveDays = keys.filter((key) => key.startsWith(thisMonth)).length;
-  const claimable = state.rewards.filter((reward) => reward.unlockedAt && !reward.claimedAt).length;
-  const claimed = state.rewards.filter((reward) => reward.claimedAt).length;
-  const todayLog = state.logs[today] || null;
-
+export function exportObject() {
   return {
-    today,
-    activeDays: keys,
-    totalDays: keys.length,
-    totalTasks,
-    totalPoints,
-    tasksByHabit,
-    currentStreak,
-    longestStreak,
-    ongoingToday: Boolean(todayLog && ((todayLog.done && todayLog.done.length) || todayLog.rest)),
-    monthActiveDays,
-    claimableCount: claimable,
-    claimedCount: claimed,
-    rewardCount: state.rewards.length,
-    level: levelFor(totalPoints)
-  };
-}
-
-export function rewardProgress(reward, stats = getStats()) {
-  const type = reward.condition.type;
-  const value = Math.max(1, Number(reward.condition.value) || 1);
-  let current = 0;
-  if (type === "days") current = stats.totalDays;
-  else if (type === "tasks") current = stats.totalTasks;
-  else if (type === "points") current = stats.totalPoints;
-  else if (type === "streak") current = stats.longestStreak;
-  return {
-    current: Math.min(current, value),
-    rawCurrent: current,
-    value,
-    remaining: Math.max(0, value - current),
-    pct: value > 0 ? Math.min(1, current / value) : 1,
-    met: current >= value
-  };
-}
-
-export function refreshRewards() {
-  const stats = getStats();
-  const unlocked = [];
-  for (const reward of state.rewards) {
-    if (reward.claimedAt) {
-      reward.unlockedAt = reward.unlockedAt || reward.claimedAt;
-      continue;
-    }
-    const progress = rewardProgress(reward, stats);
-    if (!reward.unlockedAt && progress.met) {
-      reward.unlockedAt = nowIso();
-      unlocked.push(reward);
-    }
-  }
-  return unlocked;
-}
-
-export function toggleHabitDone(habitId) {
-  const habit = state.habits.find((item) => item.id === habitId);
-  if (!habit || !habit.active) return null;
-  const log = ensureTodayLog();
-  const index = log.done.findIndex((entry) => entry.habitId === habitId);
-  let completed;
-  if (index >= 0) {
-    log.done.splice(index, 1);
-    completed = false;
-  } else {
-    log.done.push({
-      habitId,
-      points: EFFORTS[habit.effort]?.points || 1,
-      at: nowIso()
-    });
-    completed = true;
-  }
-  const unlocked = refreshRewards();
-  persist();
-  return {
-    completed,
-    points: EFFORTS[habit.effort]?.points || 1,
-    unlocked
-  };
-}
-
-export function markRest() {
-  const log = ensureTodayLog();
-  const wasRest = log.rest;
-  log.rest = true;
-  log.restAt = log.restAt || nowIso();
-  const unlocked = refreshRewards();
-  persist();
-  return { wasRest, unlocked };
-}
-
-export function addHabit(data) {
-  const habit = makeHabit(data);
-  state.habits.unshift(habit);
-  persist();
-  return habit;
-}
-
-export function updateHabit(id, patch) {
-  const habit = state.habits.find((item) => item.id === id);
-  if (!habit) return null;
-  if (patch.name !== undefined) habit.name = clampText(patch.name, 30) || habit.name;
-  if (patch.icon !== undefined) habit.icon = String(patch.icon);
-  if (patch.effort !== undefined && Number(patch.effort) in EFFORTS) habit.effort = Number(patch.effort);
-  if (patch.active !== undefined) habit.active = Boolean(patch.active);
-  habit.updatedAt = nowIso();
-  persist();
-  return habit;
-}
-
-export function deleteHabit(id) {
-  const before = state.habits.length;
-  state.habits = state.habits.filter((habit) => habit.id !== id);
-  persist();
-  return state.habits.length !== before;
-}
-
-export function addReward(data) {
-  const reward = makeReward(data);
-  state.rewards.unshift(reward);
-  const unlocked = refreshRewards();
-  persist();
-  return { reward, unlocked };
-}
-
-export function updateReward(id, patch) {
-  const reward = state.rewards.find((item) => item.id === id);
-  if (!reward) return null;
-  if (patch.title !== undefined) reward.title = clampText(patch.title, 40) || reward.title;
-  if (patch.note !== undefined) reward.note = clampText(patch.note, 120);
-  if (patch.icon !== undefined) reward.icon = String(patch.icon);
-  if (patch.condition && CONDITION_TYPES[patch.condition.type]) {
-    const type = patch.condition.type;
-    const value = Math.max(1, Math.min(9999, Math.round(Number(patch.condition.value)) || CONDITION_TYPES[type].default));
-    if (reward.condition.type !== type || reward.condition.value !== value) {
-      reward.unlockedAt = null;
-      if (reward.claimedAt) reward.claimedAt = null;
-      reward.condition = { type, value };
-    }
-  }
-  reward.updatedAt = nowIso();
-  const unlocked = refreshRewards();
-  persist();
-  return { reward, unlocked };
-}
-
-export function claimReward(id) {
-  const reward = state.rewards.find((item) => item.id === id);
-  if (!reward || !reward.unlockedAt || reward.claimedAt) return null;
-  reward.claimedAt = nowIso();
-  persist();
-  return reward;
-}
-
-export function deleteReward(id) {
-  const before = state.rewards.length;
-  state.rewards = state.rewards.filter((reward) => reward.id !== id);
-  persist();
-  return state.rewards.length !== before;
-}
-
-export function getHabitCompletionCount(habitId) {
-  let count = 0;
-  for (const log of Object.values(state.logs)) {
-    if (log.done.some((entry) => entry.habitId === habitId)) count += 1;
-  }
-  return count;
-}
-
-export function getTodayOverview() {
-  const log = state.logs[dateKey()] || null;
-  const activeHabits = state.habits.filter((habit) => habit.active);
-  const doneIds = new Set(log?.done.map((entry) => entry.habitId) || []);
-  const doneCount = activeHabits.filter((habit) => doneIds.has(habit.id)).length;
-  return {
-    log,
-    activeHabits,
-    doneIds,
-    doneCount,
-    total: activeHabits.length,
-    allDone: activeHabits.length > 0 && doneCount === activeHabits.length,
-    todayPoints: (log?.done || []).reduce((sum, entry) => sum + (Number(entry.points) || 0), 0)
-  };
-}
-
-export function getNextReward() {
-  const stats = getStats();
-  const unclaimed = state.rewards.filter((reward) => !reward.claimedAt);
-  if (!unclaimed.length) return null;
-  const claimable = unclaimed.find((reward) => reward.unlockedAt);
-  if (claimable) {
-    return { reward: claimable, progress: rewardProgress(claimable, stats), claimable: true };
-  }
-  const ranked = unclaimed
-    .map((reward) => ({ reward, progress: rewardProgress(reward, stats) }))
-    .sort((a, b) => b.progress.pct - a.progress.pct || a.progress.remaining - b.progress.remaining);
-  return { ...ranked[0], claimable: false };
-}
-
-export function getMonthGrid(year, month) {
-  const first = new Date(year, month - 1, 1, 12);
-  const daysInMonth = new Date(year, month, 0, 12).getDate();
-  const mondayOffset = (first.getDay() + 6) % 7;
-  const cells = [];
-  for (let i = 0; i < mondayOffset; i += 1) cells.push(null);
-  for (let day = 1; day <= daysInMonth; day += 1) {
-    const key = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-    const log = state.logs[key];
-    const taskCount = log?.done?.length || 0;
-    cells.push({
-      day,
-      key,
-      taskCount,
-      rest: Boolean(log?.rest),
-      shown: taskCount > 0 || Boolean(log?.rest),
-      isToday: key === dateKey(),
-      isFuture: key > dateKey()
-    });
-  }
-  while (cells.length % 7 !== 0) cells.push(null);
-  return cells;
-}
-
-export function exportData() {
-  return JSON.stringify({
-    app: "glimmer-nook",
-    exportedAt: nowIso(),
+    app: "日记",
+    exportedAt: new Date().toISOString(),
     version: 1,
-    state
-  }, null, 2);
+    entries: state.entries,
+    settings: state.settings
+  };
 }
 
-export function importData(text) {
-  let parsed;
-  try {
-    parsed = JSON.parse(text);
-  } catch {
-    throw new Error("文件不是有效的 JSON，可能下载不完整。");
+export function exportMarkdown() {
+  const list = allEntries();
+  if (!list.length) return "# 日记\n\n还没有写过。\n";
+  const parts = ["# 日记\n"];
+  for (const entry of list) {
+    const mood = MOODS.find((m) => m.id === entry.mood);
+    const tags = entry.tags.length ? ` · ${entry.tags.map((t) => `#${t}`).join(" ")}` : "";
+    parts.push(`## ${entry.key} ${weekday(entry.key)}${mood ? ` · ${mood.label}` : ""}${tags}\n`);
+    parts.push(`${entry.text.trim() || "（这天只标了心情）"}\n`);
   }
-  const payload = parsed.state || parsed;
-  if (!payload || !Array.isArray(payload.habits) || !Array.isArray(payload.rewards) || typeof payload.logs !== "object") {
-    throw new Error("这不是日记的备份文件。");
+  return parts.join("\n");
+}
+
+export function importObject(raw) {
+  if (!raw || typeof raw !== "object" || !raw.entries || typeof raw.entries !== "object") {
+    throw new Error("这不是一份日记备份。");
   }
-  const next = sanitizeState(payload, { strict: true });
-  state = next;
-  refreshRewards();
+  let added = 0;
+  for (const [k, v] of Object.entries(raw.entries)) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(k) || !v || typeof v !== "object") continue;
+    const entry = {
+      text: typeof v.text === "string" ? v.text : "",
+      mood: MOODS.some((m) => m.id === v.mood) ? v.mood : "",
+      tags: Array.isArray(v.tags) ? v.tags.filter((t) => typeof t === "string").slice(0, 12) : [],
+      updatedAt: typeof v.updatedAt === "string" ? v.updatedAt : ""
+    };
+    if (isEmpty(entry)) continue;
+    const existing = state.entries[k];
+    if (!existing || entry.text.length > existing.text.length) {
+      state.entries[k] = entry;
+      added += 1;
+    }
+  }
+  if (raw.settings && typeof raw.settings === "object") {
+    if (["auto", "light", "dark"].includes(raw.settings.theme)) state.settings.theme = raw.settings.theme;
+    if (["s", "m", "l"].includes(raw.settings.font)) state.settings.font = raw.settings.font;
+  }
   persist();
-  return state;
+  return added;
 }
 
-export function resetAll() {
+export function clearAll() {
+  state = blankState();
   try {
-    localStorage.removeItem(STORE_KEY);
+    localStorage.removeItem(KEY);
   } catch {
     /* ignore */
   }
-  state = createInitialState();
-  persist();
-  return state;
 }
 
-// Unlock rewards that were earned before this version or in a previous session.
-refreshRewards();
-persist();
+export { MOODS, WEEK };
+
+/* ---------------------------------------------------------------- 搜索 */
+
+export function searchEntries(query) {
+  const q = String(query || "").trim().toLowerCase();
+  if (!q) return [];
+  return allEntries()
+    .filter((entry) => {
+      if (entry.text.toLowerCase().includes(q)) return true;
+      return entry.tags.some((tag) => tag.toLowerCase().includes(q));
+    })
+    .slice(0, 60);
+}
+
+export function randomPastKey(exclude = "") {
+  const keys = Object.keys(state.entries).filter((k) => k !== exclude);
+  if (!keys.length) return "";
+  return keys[Math.floor(Math.random() * keys.length)];
+}

@@ -1,1104 +1,300 @@
-import {
-  APP_BUILD,
-  APP_VERSION,
-  CHANGELOG,
-  CONDITION_TYPES,
-  EFFORTS,
-  ENERGY,
-  HABIT_ICON_LABELS,
-  HABIT_TIPS,
-  MEMORY_KINDS,
-  REWARD_ICON_LABELS,
-  TODAY_SUBS
-} from "./data.js";
-import { sceneSvg } from "./scene-art.js";
-import { PLACES, PLACE_CATEGORIES } from "./place-data.js";
-import { icon, iconTile } from "./icons.js";
-import {
-  conditionText,
-  dateKicker,
-  dateLabel,
-  esc,
-  greetingFor,
-  monthTitle,
-  pickDaily,
-  shortDate,
-  timeBucket
-} from "./helpers.js";
-import {
-  getHabitCompletionCount,
-  getMonthGrid,
-  getNextReward,
-  rewardProgress
-} from "./store.js";
+/*
+ * 页面模板。只负责拼 HTML，不碰数据。
+ */
 
-const NAV_ITEMS = [
-  { route: "today", label: "今天", icon: "sun" },
-  { route: "diary", label: "日记", icon: "book" },
-  { route: "habits", label: "小事", icon: "list" },
-  { route: "places", label: "走走", icon: "map" },
-  { route: "rewards", label: "奖励", icon: "gift" },
-  { route: "me", label: "小屋", icon: "user" }
-];
+import { MOODS, dayOfYear, relativeLabel, weekday } from "./store.js";
 
-export function renderAppBar({ state, stats, route = "today" }) {
-  const titles = {
-    today: ["今天", dateKicker()],
-    diary: ["日记", "写一句也好"],
-    habits: ["我的小事", "每天一件，够了"],
-    places: ["走走", "不用真的抵达"],
-    rewards: ["奖励", "给做到的人"],
-    me: ["小屋", "设置与记录"]
-  };
-  const [title, sub] = titles[route] || titles.today;
-  return `
-    <div class="app-bar__left">
-      <button class="nav-toggle" type="button" data-action="toggle-nav" aria-label="打开导航" aria-expanded="false" aria-controls="side-nav">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
-      </button>
-      <div class="app-bar__title">
-        <strong>${title}</strong>
-        <small>${sub}</small>
-      </div>
-    </div>
-    <div class="app-bar__right">
-      <span class="top-points" title="积攒的微光">
-        ${icon("spark")}
-        <b>${stats.totalPoints}</b>
-      </span>
-      <button class="icon-btn sound-btn" type="button" data-action="toggle-sound" aria-label="${state.settings.sound ? "关闭音效" : "打开音效"}" aria-pressed="${state.settings.sound}">
-        ${icon(state.settings.sound ? "sound" : "mute")}
-      </button>
-    </div>
-  `;
+const ICONS = {
+  pen: '<path d="M4 20l4.2-1 9.6-9.6a2 2 0 0 0 0-2.8l-.4-.4a2 2 0 0 0-2.8 0L5 15.8z"/><path d="M13.5 6.5l4 4"/>',
+  calendar: '<rect x="3.5" y="5" width="17" height="15.5" rx="3"/><path d="M8 3.5v3M16 3.5v3M3.5 10h17"/>',
+  user: '<circle cx="12" cy="8.5" r="3.6"/><path d="M4.8 20c.7-3.6 3.6-5.6 7.2-5.6s6.5 2 7.2 5.6"/>',
+  left: '<path d="M14.5 5.5L8 12l6.5 6.5"/>',
+  right: '<path d="M9.5 5.5L16 12l-6.5 6.5"/>',
+  download: '<path d="M12 4v11"/><path d="M7.5 11L12 15.5 16.5 11"/><path d="M4.5 19.5h15"/>',
+  upload: '<path d="M12 20V9"/><path d="M7.5 13L12 8.5 16.5 13"/><path d="M4.5 4.5h15"/>',
+  trash: '<path d="M4.5 7h15"/><path d="M9.5 7V4.8h5V7"/><path d="M6.5 7l.9 12.2h9.2L17.5 7"/>',
+  close: '<path d="M6 6l12 12M18 6L6 18"/>',
+  sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2.8v2M12 19.2v2M2.8 12h2M19.2 12h2M5.5 5.5l1.4 1.4M17.1 17.1l1.4 1.4M18.5 5.5l-1.4 1.4M6.9 17.1l-1.4 1.4"/>',
+  moon: '<path d="M20 14.4A8.4 8.4 0 0 1 9.6 4a8.4 8.4 0 1 0 10.4 10.4z"/>',
+  spark: '<path d="M12 3.5l1.9 5.1 5.1 1.9-5.1 1.9L12 17.5l-1.9-5.1L5 10.5l5.1-1.9z"/>',
+  check: '<path d="M5 12.5l4.5 4.5L19 7"/>'
+};
+
+export function ico(name, cls = "") {
+  const path = ICONS[name] || ICONS.spark;
+  return `<svg${cls ? ` class="${cls}"` : ""} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${path}</svg>`;
 }
 
+const MOOD_FACES = {
+  low: '<circle cx="12" cy="12" r="8.6"/><path d="M8.8 15.4c.9-1.1 2-1.6 3.2-1.6s2.3.5 3.2 1.6"/><path d="M9.2 9.6h.01M14.8 9.6h.01"/>',
+  meh: '<circle cx="12" cy="12" r="8.6"/><path d="M8.6 12.4h6.8"/><path d="M9.2 9.4h.01M14.8 9.4h.01"/>',
+  ok: '<circle cx="12" cy="12" r="8.6"/><path d="M8.4 11.6a3.6 3.6 0 0 1 3.6-2.6 3.6 3.6 0 0 1 3.6 2.6z"/><path d="M12 14.6v1.2"/>',
+  good: '<circle cx="12" cy="12" r="8.6"/><path d="M8.4 13.5c.9 1.4 2.1 2.1 3.6 2.1s2.7-.7 3.6-2.1"/><path d="M9.2 9.6h.01M14.8 9.6h.01"/>',
+  great: '<circle cx="12" cy="12" r="8.6"/><path d="M8 13.2c1 2 2.4 3 4 3s3-1 4-3"/>'
+};
 
-export function renderNav({ route, claimableCount = 0, updateAvailable = false }) {
-  const activeRoute = route === "places" ? "today" : route;
-  return NAV_ITEMS.map((item) => {
-    const active = item.route === activeRoute;
-    const badge = item.route === "rewards" && claimableCount > 0
-      ? `<span class="nav-badge" aria-label="${claimableCount} 份奖励可领取">${claimableCount}</span>`
-      : "";
-    const updateDot = item.route === "me" && updateAvailable
-      ? `<span class="nav-update-dot" aria-label="有新版本可更新"></span>`
-      : "";
-    return `
-      <a class="nav-item ${active ? "is-active" : ""}" href="#/${item.route}" data-nav ${active ? 'aria-current="page"' : ""}>
-        <span class="nav-item__icon">${icon(item.icon)}${badge}${updateDot}</span>
-        <span class="nav-item__label">${item.label}</span>
-      </a>
-    `;
-  }).join("");
+export function moodFace(id, cls = "") {
+  const face = MOOD_FACES[id] || MOOD_FACES.meh;
+  return `<svg${cls ? ` class="${cls}"` : ""} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${face}</svg>`;
 }
 
-export function avatarMarkup(state, variant = "") {
-  const img = state?.profile?.avatarImage || "";
-  if (img && img.startsWith("data:image/")) {
-    return `<img class="avatar-img avatar-img--${variant}" src="${img}" alt="" draggable="false">`;
-  }
-  return `<span class="avatar-empty avatar-empty--${variant}" aria-hidden="true">${icon("user")}</span>`;
+export function renderNav(route) {
+  const items = [
+    { id: "write", label: "写", icon: "pen" },
+    { id: "calendar", label: "日历", icon: "calendar" },
+    { id: "me", label: "我", icon: "user" }
+  ];
+  return items
+    .map((item) => {
+      const active = route === item.id;
+      return `<a class="nav-item${active ? " is-active" : ""}" href="#/${item.id}" data-nav${active ? ' aria-current="page"' : ""}>${ico(item.icon)}<span>${item.label}</span></a>`;
+    })
+    .join("");
 }
 
-function todayChip(stats) {
-  if (stats.currentStreak > 0) {
-    return `<span class="chip">${icon("flame")}连续 ${stats.currentStreak} 天</span>`;
-  }
-  return `<span class="chip chip--soft">${icon("spark")}从今天开始</span>`;
-}
+export function renderWrite({ key, entry, isToday, prompt, echo, showPrompt, savedAt, tagDraft }) {
+  const date = new Date(`${key}T00:00:00`);
+  const month = date.getMonth() + 1;
+  const day = date.getDate();
+  const year = date.getFullYear();
+  const rel = relativeLabel(key);
+  const chars = entry.text.replace(/\s/g, "").length;
 
-function energyOptions(log) {
-  return Object.entries(ENERGY).map(([key, item]) => {
-    const active = log?.energy === key;
-    return `
-      <button class="energy-option ${active ? "is-active" : ""}" type="button" data-action="set-energy" data-energy="${key}" aria-pressed="${active}">
-        <span class="energy-option__icon">${icon(item.icon)}</span>
-        <span>${item.label}</span>
-      </button>
-    `;
-  }).join("");
-}
+  const moods = MOODS.map(
+    (m) =>
+      `<button class="mood${entry.mood === m.id ? " is-active" : ""}" type="button" data-mood="${m.id}" aria-pressed="${entry.mood === m.id}">${moodFace(m.id)}<span>${m.label}</span></button>`
+  ).join("");
 
-function renderTaskList(overview) {
-  if (!overview.activeHabits.length) {
-    return `
-      <div class="empty-inline">
-        ${icon("seed", "empty-inline__icon")}
-        <div>
-          <b>今天还没有安排小事</b>
-          <p>从喝一杯水开始也可以。</p>
-        </div>
-        <button class="pixel-btn pixel-btn--small" type="button" data-action="open-habit-modal">加一件</button>
-      </div>
-    `;
-  }
-  return overview.activeHabits.map((habit) => {
-    const done = overview.doneIds.has(habit.id);
-    const effort = EFFORTS[habit.effort] || EFFORTS[2];
-    return `
-      <button class="task-row ${done ? "is-done" : ""}" type="button" data-action="toggle-habit" data-id="${esc(habit.id)}" aria-pressed="${done}" aria-label="${done ? "取消打卡" : "完成"}：${esc(habit.name)}">
-        <span class="task-check">${done ? icon("check") : ""}</span>
-        ${iconTile(habit.icon, "icon-tile--task")}
-        <span class="task-copy">
-          <b>${esc(habit.name)}</b>
-          <small>${effort.label} · +${effort.points} 微光</small>
-        </span>
-        <span class="task-state" data-points="+${effort.points}">${done ? "已点亮" : `+${effort.points}`}</span>
-      </button>
-    `;
-  }).join("");
-}
-
-function renderNextReward(next, hasRewards = false) {
-  if (!next) {
-    return `
-      <div class="panel side-card next-reward">
-        <div class="side-card__head">
-          <span class="eyebrow">${icon(hasRewards ? "heart" : "gift")} ${hasRewards ? "奖励都收下了" : "下一份奖励"}</span>
-        </div>
-        <p class="muted-copy">${hasRewards ? "想再给自己点什么，随时可以写。期待本身也值得留着。" : "还没有给自己准备奖励。想要点什么，就写下来吧。"}</p>
-        <button class="pixel-btn pixel-btn--ghost pixel-btn--small" type="button" data-action="open-reward-modal">${hasRewards ? "再设一个" : "设一个奖励"}</button>
-      </div>
-    `;
-  }
-  const { reward, progress, claimable } = next;
-  return `
-    <div class="panel side-card next-reward ${claimable ? "is-claimable" : ""}">
-      <div class="side-card__head">
-        <span class="eyebrow">${icon(claimable ? "spark" : "gift")} ${claimable ? "已经攒到了" : "下一份奖励"}</span>
-        <button class="text-btn" type="button" data-action="go-rewards">全部奖励 ›</button>
-      </div>
-      <div class="next-reward__main">
-        ${iconTile(reward.icon, "icon-tile--reward")}
-        <div class="next-reward__copy">
-          <b>${esc(reward.title)}</b>
-          <small>${conditionText(reward.condition.type, reward.condition.value)}</small>
-        </div>
-        <span class="next-reward__count">${progress.current}/${progress.value}</span>
-      </div>
-      <div class="pixel-progress" role="progressbar" aria-valuemin="0" aria-valuemax="${progress.value}" aria-valuenow="${progress.current}">
-        <span style="width:${Math.round(progress.pct * 100)}%"></span>
-      </div>
-      <div class="next-reward__foot">
-        <span>${claimable ? "等你收下它。" : `还差 ${progress.remaining} ${CONDITION_TYPES[reward.condition.type].unit}`}</span>
-        <button class="pixel-btn pixel-btn--small ${claimable ? "pixel-btn--gold" : "pixel-btn--ghost"}" type="button" data-action="go-rewards">${claimable ? "去领取" : "看看"}</button>
-      </div>
-    </div>
-  `;
-}
-
-export function renderToday(ctx) {
-  const { state, stats, overview, speech } = ctx;
-  const memoryCount = Number(ctx.memoryCount) || 0;
-  const bucket = timeBucket();
-  const greeting = greetingFor(bucket, state.profile.name);
-  const sub = pickDaily(TODAY_SUBS);
-  const pct = overview.total ? Math.round((overview.doneCount / overview.total) * 100) : 0;
-  const energy = overview.log?.energy || null;
-  const note = overview.log?.note || "";
-  const doneCopy = overview.allDone
-    ? "都做完了。剩下的时间，随便你怎么用。"
-    : overview.doneCount > 0
-      ? `已经做完 ${overview.doneCount} 件，剩下的不着急。`
-      : "从最小的一件开始。做不动也没关系。";
+  const tags = entry.tags
+    .map(
+      (t) =>
+        `<span class="tag">${escapeHtml(t)}<button type="button" data-remove-tag="${escapeAttr(t)}" aria-label="删掉标签">×</button></span>`
+    )
+    .join("");
 
   return `
-    <section class="today-page">
-      <header class="hero">
-        <button class="hero__avatar" type="button" data-action="poke-avatar" aria-label="点一下">
-          ${avatarMarkup(state, "hero")}
-          <span class="hero__bubble" id="avatar-speech" aria-live="polite">${esc(speech || "")}</span>
-        </button>
-        <div class="hero__copy">
-          <p class="date-kicker">${dateKicker()}</p>
-          <h1>${greeting}</h1>
-          <p class="page-sub">${sub}</p>
-          <div class="today-chips">
-            ${todayChip(stats)}
-            <span class="chip">${icon("spark")}${stats.totalPoints} 微光</span>
-          </div>
-        </div>
-      </header>
+    <article class="write">
+      <p class="kicker">
+        <span>${year}年${month}月${day}日</span>
+        <span class="dot">·</span>
+        <span>${weekday(key)}</span>
+        <span class="dot">·</span>
+        <span>第 ${dayOfYear(key)} 天</span>
+        ${rel ? `<span class="dot">·</span><span>${rel}</span>` : ""}
+      </p>
+      <h2 class="date-title">${month}月${day}日</h2>
+      <p class="date-sub">${isToday ? "今天想写点什么？写一句也算。" : "补写这一天。写多少都可以。"}</p>
 
-      <section class="panel task-panel">
-        <div class="section-head">
-          <div>
-            <span class="eyebrow">今天的小事</span>
-            <h2>${overview.doneCount} / ${overview.total || 0} 件</h2>
-          </div>
-          <button class="text-btn text-btn--plus" type="button" data-action="open-habit-modal">${icon("plus")} 加一件</button>
-        </div>
-        <div class="pixel-progress" role="progressbar" aria-valuemin="0" aria-valuemax="${overview.total || 0}" aria-valuenow="${overview.doneCount}">
-          <span style="width:${pct}%"></span>
-        </div>
-        <div class="task-list">${renderTaskList(overview)}</div>
-        <p class="task-footnote">${doneCopy}</p>
-      </section>
+      <div class="mood-row" role="group" aria-label="这天的心情">${moods}</div>
 
-      <section class="panel note-panel">
-        <div class="note-label-row">
-          <label class="note-label" for="daily-note">给今天留一句话 <span>不限字数</span></label>
-          <a class="text-btn" href="#/diary" data-nav>打开日记本 ›</a>
-        </div>
-        <textarea id="daily-note" class="note-input" data-note rows="4" placeholder="今天……&#10;&#10;空一行，就是新的一段。">${esc(note)}</textarea>
-        <div class="note-foot">
-          <span class="muted">空一行分段 · 只保存在这台设备上</span>
-          <span data-note-count>${note.length} 字</span>
-        </div>
-      </section>
+      ${
+        showPrompt
+          ? `<section class="prompt-card">
+               <p class="prompt-label">不知道写什么</p>
+               <p id="prompt-text">${escapeHtml(prompt)}</p>
+               <div class="prompt-actions">
+                 <button class="link-btn" type="button" data-action="next-prompt">换一句</button>
+                 <button class="link-btn" type="button" data-action="dismiss-prompt">先不写</button>
+               </div>
+             </section>`
+          : ""
+      }
 
-      <section class="panel energy-panel">
-        <div class="energy__head">
-          <span class="energy__label">今天感觉怎么样？</span>
-          <span class="energy__note" id="energy-note">${energy ? ENERGY[energy].note : "选一个，不影响打卡和奖励。"}</span>
-        </div>
-        <div class="energy__options">${energyOptions(overview.log)}</div>
-        <div class="quick-row">
-          <button class="text-btn" type="button" data-action="open-memory">${icon("heart")} 记得 · ${memoryCount}</button>
-          <button class="text-btn" type="button" data-action="open-breathe">${icon("leaf")} 喘口气</button>
-          <button class="text-btn" type="button" data-action="go-places">${icon("map")} 去走走</button>
-        </div>
-      </section>
-    </section>
-  `;
-}
-
-
-function habitCard(habit) {
-  const effort = EFFORTS[habit.effort] || EFFORTS[2];
-  const count = getHabitCompletionCount(habit.id);
-  return `
-    <article class="panel habit-card ${habit.active ? "" : "is-archived"}">
-      <div class="habit-card__top">
-        ${iconTile(habit.icon, "icon-tile--habit")}
-        <div class="habit-card__copy">
-          <h3>${esc(habit.name)}</h3>
-          <p>${effort.label} · 每天一次 · +${effort.points} 微光</p>
-        </div>
-        <button class="icon-btn" type="button" data-action="edit-habit" data-id="${esc(habit.id)}" aria-label="编辑 ${esc(habit.name)}">${icon("pen")}</button>
+      <div class="editor-wrap">
+        <textarea id="editor" class="editor" spellcheck="false" placeholder="今天……">${escapeHtml(entry.text)}</textarea>
       </div>
-      <div class="habit-card__meta">
-        <span>累计完成 <b>${count}</b> 天</span>
-        <span>${habit.active ? "正在今日清单里" : "已经收起来"}</span>
+      <div class="rule"></div>
+      <div class="write-foot">
+        <span id="char-count">${chars} 字</span>
+        <span class="saved" id="saved-state">${savedAt ? `已保存 · ${escapeHtml(savedAt)}` : ""}</span>
       </div>
-      <div class="habit-card__foot">
-        <button class="text-btn" type="button" data-action="toggle-archive" data-id="${esc(habit.id)}">${habit.active ? "先收起来" : "重新启用"}</button>
+
+      <div class="tag-row">
+        ${tags}
+        <input class="tag-input" id="tag-input" type="text" maxlength="12" placeholder="＋ 标签" aria-label="添加标签" value="${escapeAttr(tagDraft || "")}">
       </div>
+
+      ${
+        echo
+          ? `<section class="echo">
+               <div class="echo__head">${ico("spark")}<span>${echo.label}</span></div>
+               <p class="echo__text">${escapeHtml(echo.text)}</p>
+               <button class="link-btn" type="button" data-action="open-echo" data-key="${echo.key}">读那一天 ›</button>
+             </section>`
+          : ""
+      }
     </article>
   `;
 }
 
-export function renderHabits({ state }) {
-  const active = state.habits.filter((habit) => habit.active);
-  const archived = state.habits.filter((habit) => !habit.active);
-  const tip = pickDaily(HABIT_TIPS);
+export function renderCalendar({ year, month, cells, todayKey, selectedKey }) {
+  const week = ["日", "一", "二", "三", "四", "五", "六"].map((w) => `<span>${w}</span>`).join("");
+  const grid = cells
+    .map((cell) => {
+      if (!cell) return '<span class="cal-cell is-blank" aria-hidden="true"></span>';
+      const classes = ["cal-cell"];
+      if (cell.level) classes.push(`lv${cell.level}`);
+      if (cell.key === todayKey) classes.push("is-today");
+      if (cell.key === selectedKey) classes.push("is-selected");
+      return `<button class="${classes.join(" ")}" type="button" data-day="${cell.key}" aria-label="${cell.key}${cell.level ? "，有记录" : ""}">
+        <span>${cell.day}</span>
+        ${cell.level ? '<i class="bar"></i>' : ""}
+      </button>`;
+    })
+    .join("");
+
   return `
-    <section class="sub-page habits-page">
-      <header class="page-head">
+    <section class="calendar">
+      <div class="cal-head">
         <div>
-          <p class="date-kicker">YOUR LITTLE THINGS</p>
-          <h1>我的小事</h1>
-          <p class="page-sub">目标不用大。小到几乎不可能失败，才算好目标。</p>
+          <h2 class="cal-title">${year}年${month}月</h2>
+          <p class="cal-sub">点一天，回到那一天。</p>
         </div>
-        <button class="pixel-btn pixel-btn--gold" type="button" data-action="open-habit-modal">${icon("plus")} 加一件小事</button>
-      </header>
-
-      ${active.length ? `
-        <div class="habit-grid">${active.map(habitCard).join("")}</div>
-      ` : `
-        <div class="panel empty-state">
-          <span class="empty-state__icon">${icon("seed")}</span>
-          <h2>先放一件小事进来吧</h2>
-          <p>「喝一杯水」「站起来伸个懒腰」「今天吃一顿饭」都可以。</p>
-          <button class="pixel-btn pixel-btn--gold" type="button" data-action="open-habit-modal">${icon("plus")} 写下第一件小事</button>
+        <div class="cal-nav">
+          <button type="button" data-action="prev-month" aria-label="上个月">${ico("left")}</button>
+          <button type="button" data-action="next-month" aria-label="下个月">${ico("right")}</button>
         </div>
-      `}
-
-      ${archived.length ? `
-        <section class="archived-block">
-          <div class="section-head section-head--plain">
-            <div>
-              <span class="eyebrow">RESTING</span>
-              <h2>先收起来的（${archived.length}）</h2>
-            </div>
-          </div>
-          <div class="habit-grid">${archived.map(habitCard).join("")}</div>
-        </section>
-      ` : ""}
-
-      <aside class="tip-card">
-        <span class="tip-card__icon">${icon("spark")}</span>
-        <div>
-          <b>今天的小提示</b>
-          <p>${tip}</p>
-        </div>
-      </aside>
-
-      <footer class="page-quote">${icon("book")}<span>小屋今天也开着。你随时可以回来。</span></footer>
+      </div>
+      <div class="cal-week">${week}</div>
+      <div class="cal-grid">${grid}</div>
+      <p class="cal-legend">
+        <span>写得越多，下面这条越深</span>
+        <i></i><i class="lv1"></i><i class="lv2"></i><i class="lv3"></i>
+      </p>
+      <div class="cal-preview" id="cal-preview"></div>
     </section>
   `;
 }
 
-function rewardCard(reward, stats) {
-  const progress = rewardProgress(reward, stats);
-  const claimed = Boolean(reward.claimedAt);
-  const claimable = Boolean(reward.unlockedAt) && !claimed;
-  const condition = CONDITION_TYPES[reward.condition.type];
-  let stateLabel = "正在积攒";
-  if (claimed) stateLabel = "已经收到";
-  else if (claimable) stateLabel = "可以领取";
-  return `
-    <article class="panel reward-card ${claimed ? "is-claimed" : ""} ${claimable ? "is-claimable" : ""}">
-      <div class="reward-card__top">
-        ${iconTile(reward.icon, "icon-tile--reward")}
-        <div class="reward-card__copy">
-          <div class="reward-card__titleline">
-            <h3>${esc(reward.title)}</h3>
-            <span class="reward-state">${stateLabel}</span>
-          </div>
-          ${reward.note ? `<p>${esc(reward.note)}</p>` : `<p>${esc(condition.hint)}</p>`}
-        </div>
-      </div>
-      <div class="reward-card__condition">
-        <span>${condition.label} ${reward.condition.value} ${condition.unit}</span>
-        <span>${progress.current} / ${progress.value}</span>
-      </div>
-      <div class="pixel-progress" role="progressbar" aria-valuemin="0" aria-valuemax="${progress.value}" aria-valuenow="${progress.current}">
-        <span style="width:${Math.round(progress.pct * 100)}%"></span>
-      </div>
-      <div class="reward-card__foot">
-        <span class="muted">
-          ${claimed
-            ? `收下于 ${shortDate(reward.claimedAt)}`
-            : claimable
-              ? "达成了。去真实地享受它吧。"
-              : `还差 ${progress.remaining} ${condition.unit}`}
-        </span>
-        <div class="reward-card__actions">
-          ${!claimed ? `<button class="text-btn" type="button" data-action="edit-reward" data-id="${esc(reward.id)}">${icon("pen")} 编辑</button>` : ""}
-          ${claimable ? `<button class="pixel-btn pixel-btn--gold pixel-btn--small" type="button" data-action="claim-reward" data-id="${esc(reward.id)}">${icon("gift")} 领取</button>` : ""}
-        </div>
-      </div>
-    </article>
-  `;
-}
-
-export function renderRewards({ state, stats }) {
-  const claimable = state.rewards.filter((reward) => reward.unlockedAt && !reward.claimedAt);
-  const locked = state.rewards
-    .filter((reward) => !reward.unlockedAt && !reward.claimedAt)
-    .map((reward) => ({ reward, progress: rewardProgress(reward, stats) }))
-    .sort((a, b) => b.progress.pct - a.progress.pct)
-    .map((item) => item.reward);
-  const claimed = state.rewards.filter((reward) => reward.claimedAt);
-
-  return `
-    <section class="sub-page rewards-page">
-      <header class="page-head">
-        <div>
-          <p class="date-kicker">THINGS WORTH WAITING FOR</p>
-          <h1>给自己的奖励</h1>
-          <p class="page-sub">不是完成任务后的工资，是你愿意好好对待自己的证据。</p>
-        </div>
-        <button class="pixel-btn pixel-btn--gold" type="button" data-action="open-reward-modal">${icon("plus")} 设一个奖励</button>
-      </header>
-
-      ${state.rewards.length ? `
-        <div class="reward-summary">
-          <span>${icon("gift")} 已经收到 <b>${claimed.length}</b> 份</span>
-          <span>${claimable.length ? `${claimable.length} 份正在发光` : "慢慢攒，不着急"}</span>
-        </div>
-      ` : ""}
-
-      ${claimable.length ? `
-        <section class="reward-section">
-          <div class="section-head section-head--plain">
-            <div>
-              <span class="eyebrow">READY TO OPEN</span>
-              <h2>可以领取了</h2>
-            </div>
-          </div>
-          <div class="reward-grid">${claimable.map((reward) => rewardCard(reward, stats)).join("")}</div>
-        </section>
-      ` : ""}
-
-      ${locked.length ? `
-        <section class="reward-section">
-          <div class="section-head section-head--plain">
-            <div>
-              <span class="eyebrow">SAVING UP</span>
-              <h2>正在积攒</h2>
-            </div>
-          </div>
-          <div class="reward-grid">${locked.map((reward) => rewardCard(reward, stats)).join("")}</div>
-        </section>
-      ` : ""}
-
-      ${claimed.length ? `
-        <section class="reward-section">
-          <div class="section-head section-head--plain">
-            <div>
-              <span class="eyebrow">ALREADY YOURS</span>
-              <h2>已经收到</h2>
-            </div>
-          </div>
-          <div class="reward-grid reward-grid--claimed">${claimed.map((reward) => rewardCard(reward, stats)).join("")}</div>
-        </section>
-      ` : ""}
-
-      ${!state.rewards.length ? `
-        <div class="panel empty-state">
-          <span class="empty-state__icon">${icon("gift")}</span>
-          <h2>还没有给自己的奖励</h2>
-          <p>一杯奶茶、一集喜欢的剧、买一本想看的书，都可以。写下来，让期待有个形状。</p>
-          <button class="pixel-btn pixel-btn--gold" type="button" data-action="open-reward-modal">${icon("plus")} 写第一份奖励</button>
-        </div>
-      ` : ""}
-
-      <aside class="tip-card">
-        <span class="tip-card__icon">${icon("heart")}</span>
-        <div>
-          <b>领取以后，记得真的去享受它</b>
-          <p>不用觉得「这点小事也值得奖励」。你愿意继续出现，本身就很值得。</p>
-        </div>
-      </aside>
-
-      <footer class="page-quote">${icon("book")}<span>小屋今天也开着。你随时可以回来。</span></footer>
-    </section>
-  `;
-}
-
-function calendarCells(cells) {
-  return cells.map((cell) => {
-    if (!cell) return `<span class="calendar-cell is-empty" aria-hidden="true"></span>`;
-    const level = cell.taskCount >= 3 ? 3 : cell.taskCount === 2 ? 2 : cell.taskCount === 1 ? 1 : 0;
-    const classes = [
-      "calendar-cell",
-      cell.shown ? "is-shown" : "",
-      level ? `level-${level}` : "",
-      cell.rest && !cell.taskCount ? "is-rest" : "",
-      cell.isToday ? "is-today" : "",
-      cell.isFuture ? "is-future" : ""
-    ].filter(Boolean).join(" ");
-    const label = cell.shown
-      ? `${cell.key}，完成 ${cell.taskCount} 件${cell.rest ? "，来喘过气" : ""}`
-      : `${cell.key}，没有记录`;
-    return `
-      <span class="${classes}" aria-label="${label}" title="${label}">
-        <span class="calendar-day">${cell.day}</span>
-        ${cell.shown ? `<i class="calendar-dot"></i>` : ""}
-      </span>
-    `;
-  }).join("");
-}
-
-function sceneHotspotMarkup(place, action) {
-  return place.hotspots.map((spot) => `
-    <button
-      class="place-hotspot"
-      type="button"
-      style="left:${(spot.x * 100).toFixed(2)}%;top:${(spot.y * 100).toFixed(2)}%;width:${(spot.w * 100).toFixed(2)}%;height:${(spot.h * 100).toFixed(2)}%"
-      data-action="${action}"
-      data-place="${esc(place.id)}"
-      data-hotspot="${esc(spot.id)}"
-      data-label="${esc(spot.label)}"
-      aria-label="看看${esc(spot.label)}">
-      <span class="place-hotspot__dot">${icon("spark")}</span>
-    </button>
-  `).join("");
-}
-
-function placeCard(place) {
-  const category = PLACE_CATEGORIES[place.category];
-  return `
-    <button class="place-card" type="button" data-action="open-place" data-place="${esc(place.id)}" aria-label="去${esc(place.name)}待一会儿">
-      <span class="place-card__scene">
-        ${sceneSvg(place.id, { className: "place-card__art" })}
-        <span class="place-card__badge">${icon(place.icon)} ${esc(category?.label || "")}</span>
-        <span class="place-card__enter">进去看看 ›</span>
-      </span>
-      <span class="place-card__copy">
-        <b>${esc(place.name)}</b>
-        <small>${esc(place.tagline)}</small>
-      </span>
-    </button>
-  `;
-}
-
-function placeSection(categoryId, places) {
-  const category = PLACE_CATEGORIES[categoryId];
-  return `
-    <section class="place-section">
-      <div class="section-head section-head--plain">
-        <div>
-          <span class="eyebrow">${categoryId === "home" ? "AT HOME" : "OUT THERE"}</span>
-          <h2>${esc(category.label)}</h2>
-        </div>
-        <span class="place-section__note">${esc(category.note)} · ${places.length} 个地方</span>
-      </div>
-      <div class="place-grid">${places.map(placeCard).join("")}</div>
-    </section>
-  `;
-}
-
-function renderPlaceScene(place, speech, state = {}) {
-  const category = PLACE_CATEGORIES[place.category];
-  const hotspots = sceneHotspotMarkup(place, "place-hotspot");
-  return `
-    <section class="sub-page place-view">
-      <header class="place-view__head">
-        <button class="icon-btn" type="button" data-action="leave-place" aria-label="回到场景列表">${icon("left")}</button>
-        <div class="place-view__title">
-          <p class="date-kicker">${esc(category?.label || "")} / ${esc(place.sceneLabel)}</p>
-          <h1>${esc(place.name)}</h1>
-          <p class="page-sub">${esc(place.tagline)}</p>
-        </div>
-        <span class="chip">${icon(place.icon)} ${esc(place.name)}</span>
-      </header>
-
-      <section class="panel place-stage">
-        <div class="place-frame">
-          ${sceneSvg(place.id, { className: "place-scene-art" })}
-          <button class="place-actor" type="button" data-action="place-character" aria-label="和小人说句话"
-            style="left:${((place.char?.x || 190) / 384 * 100).toFixed(2)}%;bottom:${(((216 - (place.char?.groundY || 188)) / 216) * 100).toFixed(2)}%">
-            ${avatarMarkup(state, "actor")}
-          </button>
-          <div class="scene-top">
-            <span class="scene-pill">${icon(place.icon)} ${esc(place.name)}</span>
-            <span class="scene-pill scene-pill--level">${esc(place.sceneLabel)}</span>
-          </div>
-          <button class="place-scene-hit" type="button" data-action="place-character" aria-label="点场景里的小人，它会弹一下"></button>
-          ${hotspots}
-          <div class="scene-speech place-speech" id="place-speech" aria-live="polite">${esc(speech)}</div>
-          <span class="scene-hint">点本子或场景里的东西</span>
-        </div>
-        <div class="place-stage__foot">
-          <p class="place-quote">“${esc(place.quote)}”</p>
-          <p class="place-subhint">${place.hotspots.map((spot) => spot.label).join(" · ")}</p>
-          <div class="place-actions">
-            <button class="pixel-btn pixel-btn--gold pixel-btn--small" type="button" data-action="place-stay">${icon("heart")} 待一会儿</button>
-            <button class="pixel-btn pixel-btn--ghost pixel-btn--small" type="button" data-action="leave-place">${icon("map")} 换个地方</button>
-            <button class="text-btn" type="button" data-action="go-today">回今日 ›</button>
-          </div>
-        </div>
-      </section>
-
-      <footer class="page-quote">${icon("book")}<span>这里不用打卡。想走的时候，随时可以走。</span></footer>
-    </section>
-  `;
-}
-
-export function renderPlaces({ state, activePlace = null, speech = "" }) {
-  const place = activePlace ? PLACES.find((item) => item.id === activePlace) : null;
-  if (place) return renderPlaceScene(place, speech, state);
-  const home = PLACES.filter((item) => item.category === "home");
-  const outdoor = PLACES.filter((item) => item.category === "outdoor");
-  return `
-    <section class="sub-page places-page">
-      <header class="page-head">
-        <div>
-          <p class="date-kicker">GO SOMEWHERE, GENTLY</p>
-          <h1>走走</h1>
-          <p class="page-sub">不用真的出门，也不用打卡。去某个地方坐一会儿，点点东西，看看会发生什么。</p>
-        </div>
-        <span class="chip">${icon("map")} ${PLACES.length} 个地方</span>
-      </header>
-
-      <aside class="places-welcome">
-        <span class="places-welcome__icon">${icon("door")}</span>
-        <div>
-          <b>选一个地方，待一会儿吧。</b>
-          <p>每个场景里都有几样可以点击的东西。没有任务，也没有正确路线。</p>
-        </div>
-      </aside>
-
-      ${placeSection("home", home)}
-      ${placeSection("outdoor", outdoor)}
-
-      <footer class="page-quote">${icon("book")}<span>不管去哪里，回来的时候，日记都在。</span></footer>
-    </section>
-  `;
-}
-
-function diaryDate(key) {
-  const date = new Date(`${key}T12:00:00`);
-  const week = ["日", "一", "二", "三", "四", "五", "六"][date.getDay()];
-  return `${date.getFullYear()} 年 ${date.getMonth() + 1} 月 ${date.getDate()} 日 · 周${week}`;
-}
-
-function diaryMonth(key) {
-  const [year, month] = key.split("-");
-  return `${year} 年 ${Number(month)} 月`;
-}
-
-function noteParagraphs(note) {
-  return String(note || "")
-    .split(/\n\s*\n/)
-    .map((part) => part.replace(/^\n+|\n+$/g, ""))
-    .filter((part) => part.trim());
-}
-
-function diaryContext(entry) {
-  const bits = [];
-  if (entry.doneCount) bits.push(`点亮 ${entry.doneCount} 件`);
-  if (entry.rest) bits.push("来喘过气");
-  if (entry.energy && ENERGY[entry.energy]) bits.push(ENERGY[entry.energy].label);
-  if (!bits.length) bits.push("来过");
-  return bits.join(" · ");
-}
-
-function renderJournal(entries, todayNote, todayKey) {
-  const past = entries.filter((entry) => entry.date !== todayKey);
-  const groups = [];
-  for (const entry of past) {
-    const month = entry.date.slice(0, 7);
-    let group = groups[groups.length - 1];
-    if (!group || group.month !== month) {
-      group = { month, entries: [] };
-      groups.push(group);
-    }
-    group.entries.push(entry);
+export function renderPreview(entry, key) {
+  if (!entry) {
+    return `<p class="cal-preview__text" style="color:var(--muted)">这一天还没有字。点进去写一点。</p>`;
   }
+  const mood = MOODS.find((m) => m.id === entry.mood);
   return `
-    <section class="panel diary-editor-card">
-      <div class="diary-editor-head">
-        <div>
-          <span class="eyebrow">TODAY'S PAGE</span>
-          <h2>${dateLabel()}</h2>
-        </div>
-        <span class="diary-save-state" data-save-state>已保存在本机</span>
-      </div>
-      <textarea class="diary-textarea" data-note rows="7" placeholder="今天想写点什么……&#10;&#10;空一行，就是新的一段。写多少都可以。">${esc(todayNote)}</textarea>
-      <div class="diary-editor-foot">
-        <span>空一行会自动分段 · 不限字数</span>
-        <span data-note-count>${todayNote.length} 字</span>
-      </div>
-    </section>
-
-    ${groups.length ? groups.map((group) => `
-      <section class="diary-month">
-        <div class="diary-month-head">
-          <span class="eyebrow">OLD PAGES</span>
-          <h2>${diaryMonth(group.month + "-01")}</h2>
-        </div>
-        <div class="diary-entry-list">
-          ${group.entries.map((entry) => `
-            <article class="panel diary-entry">
-              <div class="diary-entry-head">
-                <div>
-                  <b>${diaryDate(entry.date)}</b>
-                  <small>${diaryContext(entry)}</small>
-                </div>
-                <button class="icon-btn" type="button" data-action="edit-diary-entry" data-date="${entry.date}" aria-label="编辑这一天的日记">${icon("pen")}</button>
-              </div>
-              <div class="diary-entry-body">
-                ${noteParagraphs(entry.note).map((paragraph) => `<p>${esc(paragraph)}</p>`).join("")}
-              </div>
-            </article>
-          `).join("")}
-        </div>
-      </section>
-    `).join("") : `
-      <div class="panel empty-state diary-empty">
-        <span class="empty-state__icon">${icon("book")}</span>
-        <h2>还没有更早的日记</h2>
-        <p>今天写下的，过几天就会变成一本。不用写得完整。</p>
-      </div>
-    `}
+    <p class="cal-preview__date">${key} ${weekday(key)}${mood ? ` · ${mood.label}` : ""}</p>
+    <p class="cal-preview__text">${escapeHtml(entry.text || "（这天只标了心情）")}</p>
   `;
 }
 
-function chatTime(iso) {
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return "";
-  return date.toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit", hour12: false });
-}
+export function renderMe({ stats, settings, version }) {
+  const themeSeg = ["auto", "light", "dark"]
+    .map(
+      (id) =>
+        `<button type="button" data-theme-opt="${id}" class="${settings.theme === id ? "is-active" : ""}">${{ auto: "跟随系统", light: "浅色", dark: "深色" }[id]}</button>`
+    )
+    .join("");
+  const fontSeg = ["s", "m", "l"]
+    .map(
+      (id) => `<button type="button" data-font-opt="${id}" class="${settings.font === id ? "is-active" : ""}">${{ s: "小", m: "中", l: "大" }[id]}</button>`
+    )
+    .join("");
 
-function renderChatBubble(message) {
-  const isUser = message.role === "user";
-  const paragraphs = String(message.content || "").split(/\n/).map((line) => line.trim());
   return `
-    <div class="chat-message ${isUser ? "is-user" : "is-assistant"}">
-      ${isUser ? "" : `<span class="chat-avatar">${icon("book")}</span>`}
-      <div class="chat-bubble">
-        <div class="chat-bubble__text">${paragraphs.map((line) => line ? `<p>${esc(line)}</p>` : "<br>").join("")}</div>
-        <div class="chat-bubble__foot">
-          ${isUser ? `<button class="chat-remember" type="button" data-action="remember-chat-message" data-id="${esc(message.id)}">${icon("heart")} 记住</button>` : ""}
-          <time>${chatTime(message.at)}</time>
+    <section class="me">
+      <div class="section">
+        <p class="section__title">写到现在</p>
+        <div class="stats">
+          <div class="stat"><b>${stats.days}</b><span>写过的天数</span></div>
+          <div class="stat"><b>${stats.chars.toLocaleString("zh-CN")}</b><span>总字数</span></div>
+          <div class="stat"><b>${stats.streak}</b><span>连续天数</span></div>
         </div>
+        <p class="cal-sub" style="margin-top:12px">这个月写了 ${stats.monthCount} 天。数字只是记录，不是成绩单。</p>
       </div>
-      ${isUser ? `<span class="chat-avatar chat-avatar--user">${icon("user")}</span>` : ""}
-    </div>
-  `;
-}
 
-function renderChat({ chatMessages, chatSettings, chatSending, chatError, chatMode = "local" }) {
-  const messages = Array.isArray(chatMessages) ? chatMessages : [];
-  const intro = messages.length === 0;
-  const isLocal = chatMode !== "api";
-  return `
-    <section class="panel chat-shell ${isLocal ? "chat-shell--local" : ""}">
-      <div class="chat-head">
-        <span class="chat-head__avatar">${icon("book")}</span>
-        <div class="chat-head__copy">
-          <b>本子</b>
-          <small>${isLocal ? "离线陪伴 · 不是大模型" : `${esc(chatSettings?.model || "deepseek-flash")} · 联网`}</small>
-        </div>
-        <div class="chat-head__actions">
-          <button class="icon-btn" type="button" data-action="open-memory" aria-label="记得的小事">${icon("book")}</button>
-          <button class="icon-btn" type="button" data-action="open-chat-settings" aria-label="聊天与 API Key 设置">${icon("gear")}</button>
-          <button class="icon-btn" type="button" data-action="clear-chat" aria-label="清空聊天记录">${icon("trash")}</button>
-        </div>
-      </div>
-      ${isLocal ? `
-        <div class="chat-local-note">
-          <div>
-            <b>${icon("leaf")} 不用联网，也能说说话</b>
-            <p>它不是大模型，不会编造很多知识；但它会用你写下的小事回应你。</p>
+      <div class="section">
+        <p class="section__title">显示</p>
+        <div class="rows">
+          <div class="row" style="cursor:default">
+            <span class="row__copy"><b>主题</b><small>默认跟随系统</small></span>
+            <span class="row__end"><span class="seg">${themeSeg}</span></span>
           </div>
-          <button class="text-btn" type="button" data-action="open-chat-settings">连接 DeepSeek ›</button>
-        </div>
-      ` : ""}
-      <div class="chat-scroll" id="chat-scroll">
-        ${intro ? `
-          <div class="chat-greeting">
-            <span class="chat-avatar">${icon("book")}</span>
-            <div class="chat-bubble">
-              <div class="chat-bubble__text">${isLocal
-                ? "<p>我在。今天想说什么都可以，不用组织语言。</p><p>我会记得你愿意留下的小事。</p>"
-                : "<p>我在。今天想说什么都可以，不用组织语言。</p><p>如果不知道从哪里开始，可以先说一句「有点累」。</p>"}</div>
-            </div>
+          <div class="row" style="cursor:default">
+            <span class="row__copy"><b>字号</b><small>正文与标题一起变</small></span>
+            <span class="row__end"><span class="seg">${fontSeg}</span></span>
           </div>
-        ` : ""}
-        ${messages.map(renderChatBubble).join("")}
-        ${chatSending ? `
-          <div class="chat-message is-assistant">
-            <span class="chat-avatar">${icon("book")}</span>
-            <div class="chat-bubble chat-typing"><i></i><i></i><i></i></div>
-          </div>
-        ` : ""}
-        ${chatError ? `<div class="chat-error">${icon("moon")}<span>${esc(chatError)}</span></div>` : ""}
-      </div>
-      ${intro ? `
-        <div class="chat-prompts">
-          <button type="button" data-action="chat-prompt" data-text="今天有点累。">今天有点累</button>
-          <button type="button" data-action="chat-prompt" data-text="你记得我吗？">你记得我吗</button>
-          <button type="button" data-action="chat-prompt" data-text="陪我坐一会儿吧。">陪我坐一会儿</button>
         </div>
-      ` : ""}
-      <div class="chat-composer">
-        <textarea id="chat-input" rows="2" maxlength="4000" placeholder="想说什么都可以……"></textarea>
-        <button class="pixel-btn pixel-btn--gold" type="button" data-action="send-chat" ${chatSending ? "disabled" : ""}>${icon("right")} 发送</button>
-      </div>
-      <p class="chat-foot">Enter 发送 · Shift + Enter 换行 · 聊天记录只保存在本机</p>
-      <p class="chat-safety">${isLocal ? "离线陪伴不是大模型，也不是专业心理咨询师。" : "本子不是专业心理咨询师。"}如果情况紧急，请联系信任的人，或拨打心理援助热线 12356。</p>
-    </section>
-  `;
-}
-
-function renderMemory(memories) {
-  const list = Array.isArray(memories) ? memories : [];
-  return `
-    <section class="panel memory-add">
-      <div class="memory-add__head">
-        <div>
-          <span class="eyebrow">REMEMBER THIS</span>
-          <h2>让本子记住一件小事</h2>
-          <p>不用是大事。怕冷、喜欢靠窗、最近很累，都可以。</p>
-        </div>
-        <span class="memory-add__mark">${icon("heart")}</span>
-      </div>
-      <form class="memory-form" data-form="memory">
-        <div class="memory-input-row">
-          <input class="text-input" name="text" maxlength="80" autocomplete="off" placeholder="比如：我怕冷，喜欢靠窗坐。" aria-label="要记住的小事">
-          <button class="pixel-btn pixel-btn--gold" type="submit">${icon("plus")} 记下来</button>
-        </div>
-        <div class="memory-kind-options">
-          ${Object.entries(MEMORY_KINDS).map(([id, kind]) => `
-            <label class="memory-kind-option">
-              <input type="radio" name="kind" value="${id}" ${id === "care" ? "checked" : ""}>
-              <span>${icon(kind.icon)} ${kind.label}</span>
-            </label>
-          `).join("")}
-        </div>
-      </form>
-      <div class="memory-quick">
-        <span>不知道写什么？</span>
-        <button type="button" data-action="memory-suggestion" data-text="我怕冷。" data-kind="boundary">我怕冷</button>
-        <button type="button" data-action="memory-suggestion" data-text="我喜欢靠窗坐。" data-kind="like">喜欢靠窗</button>
-        <button type="button" data-action="memory-suggestion" data-text="最近很容易累。" data-kind="recent">最近很累</button>
-        <button type="button" data-action="memory-suggestion" data-text="我不喜欢被催。" data-kind="boundary">不喜欢被催</button>
-      </div>
-    </section>
-
-    <section class="memory-list">
-      <div class="section-head section-head--plain">
-        <div>
-          <span class="eyebrow">THINGS I KEEP</span>
-          <h2>记得的</h2>
-        </div>
-        <span class="chip">${icon("heart")} ${list.length} 件</span>
-      </div>
-      ${list.length ? `<div class="memory-cards">${list.map((memory) => {
-        const kind = MEMORY_KINDS[memory.kind] || MEMORY_KINDS.care;
-        return `
-          <article class="panel memory-card" data-kind="${esc(memory.kind)}">
-            <div class="memory-card__head">
-              <span class="memory-kind">${icon(kind.icon)} ${kind.label}</span>
-              <span class="memory-card__date">${shortDate(memory.createdAt)}</span>
-              <span class="memory-card__actions">
-                <button class="icon-btn" type="button" data-action="edit-memory" data-id="${esc(memory.id)}" aria-label="编辑这件小事">${icon("pen")}</button>
-                <button class="icon-btn" type="button" data-action="delete-memory" data-id="${esc(memory.id)}" aria-label="忘掉这件小事">${icon("trash")}</button>
-              </span>
-            </div>
-            <p>${esc(memory.text)}</p>
-          </article>
-        `;
-      }).join("")}</div>` : `
-        <div class="panel empty-state memory-empty">
-          <span class="empty-state__icon">${icon("heart")}</span>
-          <h2>本子还没有记住什么</h2>
-          <p>从一句「我喜欢……」或「最近……」开始。你愿意留下的，它才会记得。</p>
-        </div>
-      `}
-    </section>
-    <p class="memory-privacy">${icon("lock")} 这些记忆只保存在这台设备上，会随导出备份一起保存。只有你主动连接 DeepSeek 聊天时，最近的记忆才会作为聊天上下文发送给你配置的接口。</p>
-  `;
-}
-
-export function renderDiary({
-  state,
-  entries = [],
-  todayNote = "",
-  todayKey = "",
-  tab = "journal",
-  memories = [],
-  chatMessages = [],
-  chatSettings = null,
-  chatSending = false,
-  chatError = "",
-  chatMode = "local"
-}) {
-  const isChat = tab === "chat";
-  const isMemory = tab === "memory";
-  const memoryCount = memories.length;
-  const chatLabel = chatMode === "api" ? "联网" : "离线";
-  return `
-    <section class="sub-page diary-page ${isChat ? "diary-page--chat" : ""}">
-      <header class="page-head diary-head">
-        <div>
-          <p class="date-kicker">${isMemory ? "THINGS I KEEP" : isChat ? "THE CORNER" : "YOUR QUIET PAGES"}</p>
-          <h1>${isMemory ? "记得" : isChat ? "和本子聊聊" : "日记本"}</h1>
-          <p class="page-sub">${isMemory
-            ? "不是全部，只是你愿意留下的小事。可以随时改，也可以随时忘掉。"
-            : isChat
-              ? "离线也能说话。本子会记得你写下的；想聊更多，可以连接 DeepSeek。"
-              : "写多少都可以。空一行，就是新的一段。这里不统计字数，也不催你更新。"}</p>
-        </div>
-        <span class="chip">${isMemory ? `${icon("heart")} ${memoryCount} 件` : isChat ? `${icon("book")} ${chatLabel}` : `${icon("book")} ${entries.length} 篇`}</span>
-      </header>
-
-      <div class="diary-tabs" role="tablist" aria-label="日记、记忆与聊天">
-        <button class="diary-tab ${tab === "journal" ? "is-active" : ""}" type="button" role="tab" aria-selected="${tab === "journal"}" data-action="diary-tab" data-tab="journal">${icon("book")} 日记本</button>
-        <button class="diary-tab ${tab === "memory" ? "is-active" : ""}" type="button" role="tab" aria-selected="${tab === "memory"}" data-action="diary-tab" data-tab="memory">${icon("heart")} 记得 ${memoryCount ? `<span>${memoryCount}</span>` : ""}</button>
-        <button class="diary-tab ${tab === "chat" ? "is-active" : ""}" type="button" role="tab" aria-selected="${tab === "chat"}" data-action="diary-tab" data-tab="chat">${icon("book")} 聊聊天 <span>${chatLabel}</span></button>
       </div>
 
-      ${isChat ? renderChat({ chatMessages, chatSettings, chatSending, chatError, chatMode }) : isMemory ? renderMemory(memories) : renderJournal(entries, todayNote, todayKey)}
-
-      <footer class="page-quote">${icon("book")}<span>${isMemory
-        ? "你愿意留下的，才会被记住。"
-        : isChat
-          ? "不用说得漂亮，能说出来就很好。"
-          : "说不出来的时候，写下来也可以。写不出来，也没关系。"}</span></footer>
-    </section>
-  `;
-}
-
-export function renderMe({ state, stats, calendar, versionInfo = null, updateAvailable = false, platform = "网页版", memoryCount = 0 }) {
-  const grid = getMonthGrid(calendar.year, calendar.month);
-  const monthShown = grid.filter((cell) => cell && cell.shown).length;
-  const level = stats.level;
-  const now = new Date();
-  const isCurrentMonth = calendar.year === now.getFullYear() && calendar.month === now.getMonth() + 1;
-  const name = state.profile.name || "小旅人";
-  const nextLevelText = level.next
-    ? `再攒 ${level.toNext} 微光，变成「${level.next.name}」。`
-    : "你已经是一小片星河了。";
-  const latest = CHANGELOG[0];
-  const versionStatus = updateAvailable && versionInfo
-    ? `发现新版本 v${versionInfo.version}，可以更新。`
-    : versionInfo
-      ? "已经是最新版本。"
-      : "联网后可以检查小屋的新版本。";
-
-  return `
-    <section class="sub-page me-page">
-      <header class="page-head page-head--profile">
-        <div>
-          <p class="date-kicker">YOUR LITTLE NOOK</p>
-          <h1>我的小屋</h1>
-          <p class="page-sub">这里没有排名，也没有别人。只有你和一点点累积起来的光。</p>
-        </div>
-      </header>
-
-      <div class="me-grid">
-        <section class="panel profile-card">
-          <button class="portrait-frame portrait-frame--button" type="button" data-action="open-wardrobe" aria-label="换一个形象">
-            ${avatarMarkup(state, "portrait")}
-            <span class="portrait-status"></span>
-            <span class="portrait-edit">换形象</span>
+      <div class="section">
+        <p class="section__title">数据</p>
+        <div class="rows">
+          <button class="row" type="button" data-action="export-json">
+            <span class="row__copy"><b>导出备份</b><small>一个 JSON 文件，能再导回来</small></span>
+            <span class="row__end">${ico("download")}</span>
           </button>
-          <div class="profile-card__copy">
-            <span class="eyebrow">THE KEEPER OF THIS NOOK</span>
-            <div class="profile-name-row">
-              <h2>${esc(name)}</h2>
-              <button class="icon-btn" type="button" data-action="edit-name" aria-label="修改称呼">${icon("pen")}</button>
-            </div>
-            <p>${stats.totalDays ? `你已经在小屋出现过 ${stats.totalDays} 天。` : "今天，是你第一次推开小屋的门。"}</p>
-            <p class="look-summary" title="我的头像">${icon("user")} ${state.profile.avatarImage ? "用自己的图" : "还没换头像"}</p>
-            <div class="level-line">
-              <span>${icon("spark")} ${level.current.name}</span>
-              <span>${stats.totalPoints} 微光</span>
-            </div>
-            <div class="pixel-progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(level.progress * 100)}">
-              <span style="width:${Math.round(level.progress * 100)}%"></span>
-            </div>
-            <p class="level-note">${level.current.note} ${nextLevelText}</p>
-          </div>
-        </section>
-
-        <section class="panel stats-card">
-          <span class="eyebrow">LITTLE NUMBERS</span>
-          <div class="stat-grid">
-            <div class="stat"><strong>${stats.totalDays}</strong><span>出现天数</span></div>
-            <div class="stat"><strong>${stats.totalTasks}</strong><span>完成次数</span></div>
-            <div class="stat"><strong>${stats.currentStreak}</strong><span>当前连续</span></div>
-            <div class="stat"><strong>${stats.longestStreak}</strong><span>最长连续</span></div>
-          </div>
-          <p class="stat-note">数字只是记录，不是成绩单。它们不会因为你休息就消失。</p>
-        </section>
+          <button class="row" type="button" data-action="export-md">
+            <span class="row__copy"><b>导出 Markdown</b><small>按日期排好，能放进别的笔记软件</small></span>
+            <span class="row__end">${ico("download")}</span>
+          </button>
+          <button class="row" type="button" data-action="import">
+            <span class="row__copy"><b>导入备份</b><small>同一天取字数多的那份</small></span>
+            <span class="row__end">${ico("upload")}</span>
+          </button>
+          <button class="row" type="button" data-action="clear-all">
+            <span class="row__copy"><b>清空全部</b><small>删掉这台设备上的所有记录</small></span>
+            <span class="row__end">${ico("trash")}</span>
+          </button>
+        </div>
       </div>
 
-      <section class="panel calendar-card">
-        <div class="calendar-head">
-          <div>
-            <span class="eyebrow">FOOTPRINTS</span>
-            <h2>${monthTitle(calendar.year, calendar.month)}</h2>
-          </div>
-          <div class="calendar-nav">
-            <button class="icon-btn" type="button" data-action="cal-prev" aria-label="上个月">${icon("left")}</button>
-            <button class="icon-btn" type="button" data-action="cal-next" aria-label="下个月" ${isCurrentMonth ? "disabled" : ""}>${icon("right")}</button>
-          </div>
-        </div>
-        <div class="weekday-row" aria-hidden="true">
-          <span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span>
-        </div>
-        <div class="calendar-grid">${calendarCells(grid)}</div>
-        <div class="calendar-legend">
-          <span><i class="legend-dot level-1"></i> 1 件</span>
-          <span><i class="legend-dot level-2"></i> 2 件</span>
-          <span><i class="legend-dot level-3"></i> 3 件以上</span>
-          <span><i class="legend-dot is-rest"></i> 来喘口气</span>
-          <span class="calendar-month-sum">这个月出现了 <b>${monthShown}</b> 天</span>
-        </div>
-      </section>
-
-      <section class="panel update-card">
-        <div class="update-card__head">
-          <div>
-            <span class="eyebrow">VERSION & UPDATE</span>
-            <h2>版本与更新</h2>
-          </div>
-          <span class="version-badge">v${APP_VERSION}</span>
-        </div>
-        <div class="version-line">
-          <span>${icon("book")} 日记</span>
-          <span>${esc(platform)} · 构建 ${APP_BUILD}</span>
-        </div>
-        <p class="update-status ${updateAvailable ? "is-update" : ""}" id="update-status">${versionStatus}</p>
-        <p class="update-latest"><b>v${latest.version}</b> ${esc(latest.title)}</p>
-        <div class="update-actions">
-          <button class="pixel-btn pixel-btn--ghost pixel-btn--small" type="button" data-action="check-update">${icon("refresh")} 检查更新</button>
-          <button class="text-btn" type="button" data-action="open-changelog">${icon("list")} 更新日志</button>
-        </div>
-      </section>
-
-      <div class="me-columns">
-        <section class="panel settings-card">
-          <span class="eyebrow">SETTINGS</span>
-          <h2>小屋设置</h2>
-          <div class="setting-list">
-            <button class="setting-row" type="button" role="switch" aria-checked="${state.settings.sound}" data-action="toggle-setting" data-key="sound">
-              <span class="setting-row__icon">${icon("sound")}</span>
-              <span class="setting-row__copy"><b>音效</b><small>按钮和打卡时的小声音</small></span>
-              <span class="switch ${state.settings.sound ? "is-on" : ""}" aria-hidden="true"><i></i></span>
-            </button>
-            <button class="setting-row" type="button" role="switch" aria-checked="${state.settings.motion}" data-action="toggle-setting" data-key="motion">
-              <span class="setting-row__icon">${icon("spark")}</span>
-              <span class="setting-row__copy"><b>小屋动画</b><small>关闭后，本子会安静地待着</small></span>
-              <span class="switch ${state.settings.motion ? "is-on" : ""}" aria-hidden="true"><i></i></span>
-            </button>
-            <button class="setting-row" type="button" data-action="open-wardrobe">
-              <span class="setting-row__icon">${icon("user")}</span>
-              <span class="setting-row__copy"><b>我的头像</b><small>选一张自己的图，只存在这台设备上</small></span>
-              <span class="setting-arrow">${icon("right")}</span>
-            </button>
-            <button class="setting-row" type="button" data-action="go-places">
-              <span class="setting-row__icon">${icon("map")}</span>
-              <span class="setting-row__copy"><b>去走走</b><small>13 个手绘场景，点场景里的东西看看</small></span>
-              <span class="setting-arrow">${icon("right")}</span>
-            </button>
-            <button class="setting-row" type="button" data-action="open-memory">
-              <span class="setting-row__icon">${icon("heart")}</span>
-              <span class="setting-row__copy"><b>记得</b><small>${memoryCount ? `已经记住 ${memoryCount} 件小事` : "在角落里，等你留下一件小事"}</small></span>
-              <span class="setting-arrow">${icon("right")}</span>
-            </button>
-            <button class="setting-row" type="button" data-action="open-diary-chat">
-              <span class="setting-row__icon">${icon("book")}</span>
-              <span class="setting-row__copy"><b>和本子聊天</b><small>离线陪伴免费；连接 API 后可以用 DeepSeek</small></span>
-              <span class="setting-arrow">${icon("right")}</span>
-            </button>
-            <a class="setting-row" href="https://chat.deepseek.com/" target="_blank" rel="noopener" data-action="open-deepseek-web">
-              <span class="setting-row__icon">${icon("book")}</span>
-              <span class="setting-row__copy"><b>DeepSeek 网页版</b><small>免费登录使用；对话不会自动存进小屋</small></span>
-              <span class="setting-arrow">${icon("right")}</span>
-            </a>
-            <button class="setting-row" type="button" data-action="export-data">
-              <span class="setting-row__icon">${icon("download")}</span>
-              <span class="setting-row__copy"><b>导出备份</b><small>把全部记录存成一个文件</small></span>
-              <span class="setting-arrow">${icon("right")}</span>
-            </button>
-            <button class="setting-row" type="button" data-action="import-data">
-              <span class="setting-row__icon">${icon("upload")}</span>
-              <span class="setting-row__copy"><b>导入备份</b><small>从另一台设备搬回小屋</small></span>
-              <span class="setting-arrow">${icon("right")}</span>
-            </button>
-            <button class="setting-row setting-row--danger" type="button" data-action="reset-data">
-              <span class="setting-row__icon">${icon("trash")}</span>
-              <span class="setting-row__copy"><b>重新开始</b><small>清空这台设备上的全部记录</small></span>
-              <span class="setting-arrow">${icon("right")}</span>
-            </button>
-          </div>
-          <input id="import-file" type="file" accept="application/json,.json" hidden>
-        </section>
-
-        <section class="panel about-card">
-          <span class="eyebrow">ABOUT THIS NOOK</span>
-          <h2>关于日记</h2>
-          <p>一个不催你的日记本。记录出现过的一点点，给想对自己好的心情留个位置。</p>
-          <p class="about-small">打卡、日记、记得和设置只保存在这台设备的浏览器里。不上传，不排名，不需要登录。换设备前记得导出备份。</p>
-          <p class="about-small">联网聊天是可选的：需要你自己的 DeepSeek API Key，聊天内容和最近的记忆会直接发送给 DeepSeek；Key 和聊天记录不进备份。离线陪伴不会上传任何内容。</p>
-          <div class="about-kind">
-            ${icon("heart")}
-            <p>如果最近真的很累，别一个人扛。找一个信任的人说说，或联系专业的心理支持。你不需要先变得有用，才值得被帮助。</p>
-          </div>
-          <p class="about-version">DIARY v${APP_VERSION} · 界面字体：系统字体</p>
-        </section>
-      </div>
-
-      <footer class="page-quote">${icon("book")}<span>小屋今天也开着。你随时可以回来。</span></footer>
+      <p class="about">
+        <strong>日记 ${version}</strong><br>
+        所有内容只保存在这台设备的浏览器里，不上传、不需要登录，也没有人能看到。<br>
+        换设备或换浏览器之前，记得先导出一份备份。
+      </p>
     </section>
   `;
+}
+
+export function escapeHtml(text) {
+  return String(text).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+export function escapeAttr(text) {
+  return escapeHtml(text).replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+}
+
+/* ---------------------------------------------------------------- 搜索 */
+
+export function renderSearchBox() {
+  return `
+    <section class="search">
+      <label class="search__label" for="search-input">找一段话</label>
+      <input class="search__input" id="search-input" type="search" placeholder="输入一句话、一个词，或者一个标签" autocomplete="off">
+      <div class="search__results" id="search-results"></div>
+    </section>
+  `;
+}
+
+export function renderSearchResults(list, query) {
+  if (!query.trim()) return "";
+  if (!list.length) {
+    return `<p class="search__empty">没有找到「${escapeHtml(query)}」。换个词试试。</p>`;
+  }
+  return list
+    .map((entry) => {
+      const mood = MOODS.find((m) => m.id === entry.mood);
+      const snippet = buildSnippet(entry.text, query);
+      return `<button class="search-hit" type="button" data-key="${entry.key}">
+        <span class="search-hit__date">${entry.key}${mood ? ` · ${mood.label}` : ""}</span>
+        <span class="search-hit__text">${snippet}</span>
+      </button>`;
+    })
+    .join("");
+}
+
+function buildSnippet(text, query) {
+  const clean = text.replace(/\s+/g, " ").trim();
+  if (!clean) return "（这天只标了心情）";
+  const index = clean.toLowerCase().indexOf(query.trim().toLowerCase());
+  if (index < 0) return escapeHtml(clean.slice(0, 90));
+  const start = Math.max(0, index - 24);
+  const slice = clean.slice(start, start + 96);
+  return `${start > 0 ? "…" : ""}${escapeHtml(slice)}${start + 96 < clean.length ? "…" : ""}`;
+}
+
+export function renderRandomLink(hasEntries) {
+  if (!hasEntries) return "";
+  return `<p class="search__foot"><button class="link-btn" type="button" data-action="random-page">想不起来写什么？随便翻一页 ›</button></p>`;
 }

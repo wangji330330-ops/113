@@ -1,14 +1,17 @@
 {
-  "version": "0.5.3",
-  "build": 9,
-  "releasedAt": "2026-11-01",
-  "title": "头像换成你自己的图",
+  "version": "1.0.0",
+  "build": 10,
+  "releasedAt": "2026-11-05",
+  "title": "重写：一页一天",
   "notes": [
-    "「小屋 → 我的头像」可以选一张自己的图，只保存在这台设备上。",
-    "场景里不再自动走动，点角色只 Q 弹。",
-    "各页面选项之间放松了间距。"
+    "整本重写：不再是打卡小屋，就是一页一天的日记本。",
+    "写一句就算，写不出来有引导句，可以换、可以关掉。",
+    "心情五档、标签、日历回看、去年今天。",
+    "浅色 / 深色 / 跟随系统，三档字号。",
+    "导出 JSON 备份和 Markdown，能再导回来。",
+    "旧版的数据已经在升级时清掉，从空白的一天开始。"
   ],
   "webUrl": "https://wangji330330-ops.github.io/113/",
-  "apkUrl": "https://wangji330330-ops.github.io/113/download/diary-v0.5.3-debug.apk",
+  "apkUrl": "https://wangji330330-ops.github.io/113/download/diary-v1.0.0-debug.apk",
   "releaseUrl": "https://github.com/wangji330330-ops/113/releases"
 }

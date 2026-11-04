@@ -1,7 +1,7 @@
 {
-  "name": "日记 · 一点点也算数",
+  "name": "日记",
   "short_name": "日记",
-  "description": "一个不催你的日记本。写一句，记一件小事，都算数。",
+  "description": "一页一天。写了就算数，没写也不会被催。",
   "lang": "zh-CN",
   "dir": "ltr",
   "start_url": "./",
@@ -10,9 +10,9 @@
   "display": "standalone",
   "display_override": ["standalone", "minimal-ui"],
   "orientation": "portrait-primary",
-  "background_color": "#fdf8f3",
-  "theme_color": "#fdf8f3",
-  "categories": ["lifestyle", "productivity", "health"],
+  "background_color": "#fbf7f1",
+  "theme_color": "#fbf7f1",
+  "categories": ["lifestyle", "productivity"],
   "icons": [
     {
       "src": "./assets/icons/icon-192.png",

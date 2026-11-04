@@ -10,8 +10,8 @@ android {
         applicationId = "com.glimmernook.app"
         minSdk = 24
         targetSdk = 34
-        versionCode = 9
-        versionName = "0.5.3"
+        versionCode = 10
+        versionName = "1.0.0"
     }
 
     buildTypes {
